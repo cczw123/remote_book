@@ -1,0 +1,125 @@
+<p><a href="SUMMARY.html"><img alt="cover" src="images/cover.png"/></a></p>
+<h2>About this book</h2>
+<p>This is a book on the functional paradigm in general. We'll use the world's most popular functional programming language: JavaScript. Some may feel this is a poor choice as it's against the grain of the current culture which, at the moment, feels predominately imperative. However, I believe it is the best way to learn FP for several reasons:</p>
+<ul>
+<li>
+<p><strong>You likely use it every day at work.</strong></p>
+<p>This makes it possible to practice and apply your acquired knowledge each day on real world programs rather than pet projects on nights and weekends in an esoteric FP language.</p>
+</li>
+<li>
+<p><strong>We don't have to learn everything up front to start writing programs.</strong></p>
+<p>In a pure functional language, you cannot log a variable or read a DOM node without using monads. Here we can cheat a little as we learn to purify our codebase. It's also easier to get started in this language since it's mixed paradigm and you can fall back on your current practices while there are gaps in your knowledge.</p>
+</li>
+<li>
+<p><strong>The language is fully capable of writing top notch functional code.</strong></p>
+<p>We have all the features we need to mimic a language like Scala or Haskell with the help of a tiny library or two. Object-oriented programming currently dominates the industry, but it's clearly awkward in JavaScript. It's akin to camping off of a highway or tap dancing in galoshes. We have to <code>bind</code> all over the place lest <code>this</code> change out from under us, we have various work arounds for the quirky behavior when the <code>new</code> keyword is forgotten, private members are only available via closures. To a lot of us, FP feels more natural anyways.</p>
+</li>
+</ul>
+<p>That said, typed functional languages will, without a doubt, be the best place to code in the style presented by this book. JavaScript will be our means of learning a paradigm, where you apply it is up to you. Luckily, the interfaces are mathematical and, as such, ubiquitous. You'll find yourself at home with Swiftz, Scalaz, Haskell, PureScript, and other mathematically inclined environments.</p>
+<h2>Read it Online</h2>
+<p>For a best reading experience, <a href="https://mostly-adequate.gitbooks.io/mostly-adequate-guide/">read it online via Gitbook</a>.</p>
+<ul>
+<li>Quick-access side-bar</li>
+<li>In-browser exercises</li>
+<li>In-depth examples</li>
+</ul>
+<h2>Play Around with Code</h2>
+<p>To make the training efficient and not get too bored while I am telling you another story, make sure to play around with the concepts introduced in this book. Some can be tricky to catch at first and are better understood by getting your hands dirty.
+All functions and algebraic data-structures presented in the book are gathered in the appendixes. The corresponding code is also available as an npm module:</p>
+<pre><code class="language-bash">$ npm i @mostly-adequate/support
+</code></pre>
+<p>Alternatively, exercises of each chapter are runnable and can be completed in your editor! For example, complete the <code>exercise_*.js</code> in <code>exercises/ch04</code> and then run:</p>
+<pre><code class="language-bash">$ npm run ch04
+</code></pre>
+<h2>Download it</h2>
+<p>Find pre-generated <strong>PDF</strong> and <strong>EPUB</strong> as <a href="https://github.com/MostlyAdequate/mostly-adequate-guide/releases/latest">build artifacts of the latest release</a>.</p>
+<h2>Do it yourself</h2>
+<blockquote>
+<p>⚠️ This project setup is now a bit old and thus, you may run into various issues when building this locally. We recommend to use node v10.22.1 and the latest version of Calibre if possible. </p>
+</blockquote>
+<h3>About the nodejs version</h3>
+<p>As the recommended node version (v10.22.1) is a bit old now, is more than likely that you do not have it installed on your system. You can have multiple versions of nodejs installed on your system using <a href="https://github.com/nvm-sh/nvm">nvm</a>. Refer to that project to install it and then you will be able to:</p>
+<ul>
+<li>Install any node version that you need:</li>
+</ul>
+<pre><code>nvm install 10.22.1
+nvm install 20.2.0
+</code></pre>
+<ul>
+<li>Then you will be able to switch between node versions:</li>
+</ul>
+<pre><code>nvm use 10.22.1
+node -v // will show v10.22.1 
+nvm use 20.2.0
+node -v // will show v20.2.0
+</code></pre>
+<p>As this project has a .nvmrc file you can call <code>nvm install</code> and <code>nvm use</code> without specifying the node version:</p>
+<pre><code>// being anywhere inside this project
+nvm install
+node -v // will show v10.22.1
+</code></pre>
+<h3>Complete sequence of commands</h3>
+<p>Considering the above about having nvm installed on your system, here is the complete sequence of commands to generate pdf and epub files by yourself:</p>
+<pre><code>git clone https://github.com/MostlyAdequate/mostly-adequate-guide.git
+cd mostly-adequate-guide/
+nvm install
+npm install
+npm run setup
+npm run generate-pdf
+npm run generate-epub
+</code></pre>
+<blockquote>
+<p>Note! To generate the ebook version you will need to install <code>ebook-convert</code>. <a href="https://gitbookio.gitbooks.io/documentation/content/build/ebookconvert.html">Installation instructions</a>.</p>
+</blockquote>
+<h1>Table of Contents</h1>
+<p>See <a href="SUMMARY.html">SUMMARY.md</a></p>
+<h3>Contributing</h3>
+<p>See <a href="CONTRIBUTING.html">CONTRIBUTING.md</a></p>
+<h3>Translations</h3>
+<p>See <a href="TRANSLATIONS.html">TRANSLATIONS.md</a></p>
+<h3>FAQ</h3>
+<p>See <a href="FAQ.html">FAQ.md</a></p>
+<h1>Plans for the future</h1>
+<ul>
+<li><strong>Part 1</strong> (chapters 1-7) is a guide to the basics. I'm updating as I find errors since this is the initial draft. Feel free to help!</li>
+<li><strong>Part 2</strong> (chapters 8-13) address type classes like functors and monads all the way through to traversable. I hope to squeeze in transformers and a pure application.</li>
+<li><strong>Part 3</strong> (chapters 14+) will start to dance the fine line between practical programming and academic absurdity. We'll look at comonads, f-algebras, free monads, yoneda, and other categorical constructs.</li>
+</ul>
+<hr/>
+<p align="center">
+<a href="http://creativecommons.org/licenses/by-sa/4.0/" rel="license">
+<img alt="Creative Commons License" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" style="border-width:0"/>
+</a>
+<br/>
+  This work is licensed under a <a href="http://creativecommons.org/licenses/by-sa/4.0/" rel="license">Creative Commons Attribution-ShareAlike 4.0 International License</a>.
+</p>
+<script>
+function runSandbox(id) {
+    const code = document.getElementById('code-' + id).value;
+    const output = document.getElementById('output-' + id);
+    output.innerHTML = '';
+    
+    const originalLog = console.log;
+    console.log = function(...args) {
+        args.forEach(arg => {
+            output.innerHTML += '<div>' + arg + '</div>';
+        });
+        originalLog.apply(console, args);
+    };
+
+    try {
+        eval(code);
+    } catch (e) {
+        output.innerHTML += '<div style="color: red;">Error: ' + e.message + '</div>';
+    } finally {
+        console.log = originalLog;
+    }
+}
+</script>
+<style>
+.sandbox { border: 1px solid #ccc; padding: 10px; margin: 10px 0; border-radius: 5px; background-color: #f9f9f9; }
+.sandbox textarea { width: 100%; height: 100px; font-family: monospace; margin-bottom: 5px; padding: 5px; box-sizing: border-box; }
+.sandbox button { padding: 5px 10px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 3px; }
+.sandbox button:hover { background-color: #0056b3; }
+.sandbox-output { background: #fff; padding: 10px; margin-top: 5px; border: 1px solid #ddd; min-height: 40px; font-family: monospace; }
+</style>

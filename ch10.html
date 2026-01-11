@@ -1,0 +1,284 @@
+<h1>Chapter 10: Applicative Functors</h1>
+<h2>Applying Applicatives</h2>
+<p>The name <strong>applicative functor</strong> is pleasantly descriptive given its functional origins. Functional programmers are notorious for coming up with names like <code>mappend</code> or <code>liftA4</code>, which seem perfectly natural when viewed in the math lab, but hold the clarity of an indecisive Darth Vader at the drive thru in any other context.</p>
+<p>Anyhow, the name should spill the beans on what this interface gives us: <em>the ability to apply functors to each other</em>.</p>
+<p>Now, why would a normal, rational person such as yourself want such a thing? What does it even <em>mean</em> to apply one functor to another?</p>
+<p>To answer these questions, we'll start with a situation you may have already encountered in your functional travels. Let's say, hypothetically, that we have two functors (of the same type) and we'd like to call a function with both of their values as arguments. Something simple like adding the values of two <code>Container</code>s.</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-0">// We can't do this because the numbers are bottled up.
+add(Container.of(2), Container.of(3));
+// NaN
+
+// Let's use our trusty map
+const containerOfAdd2 = map(add, Container.of(2));
+// Container(add(2))
+</textarea><button onclick="runSandbox('sandbox-0')">Run Code</button><div class="sandbox-output" id="output-sandbox-0">Output will appear here...</div></div>
+<p>We have ourselves a <code>Container</code> with a partially applied function inside. More specifically, we have a <code>Container(add(2))</code> and we'd like to apply its <code>add(2)</code> to the <code>3</code> in <code>Container(3)</code> to complete the call. In other words, we'd like to apply one functor to another.</p>
+<p>Now, it just so happens that we already have the tools to accomplish this task. We can <code>chain</code> and then <code>map</code> the partially applied <code>add(2)</code> like so:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-1">Container.of(2).chain(two =&gt; Container.of(3).map(add(two)));
+</textarea><button onclick="runSandbox('sandbox-1')">Run Code</button><div class="sandbox-output" id="output-sandbox-1">Output will appear here...</div></div>
+<p>The issue here is that we are stuck in the sequential world of monads wherein nothing may be evaluated until the previous monad has finished its business. We have ourselves two strong, independent values and I should think it unnecessary to delay the creation of <code>Container(3)</code> merely to satisfy the monad's sequential demands.</p>
+<p>In fact, it would be lovely if we could succinctly apply one functor's contents to another's value without these needless functions and variables should we find ourselves in this pickle jar.</p>
+<h2>Ships in Bottles</h2>
+<p><img alt="https://www.deviantart.com/hollycarden" src="images/ship_in_a_bottle.jpg"/></p>
+<p><code>ap</code> is a function that can apply the function contents of one functor to the value contents of another. Say that five times fast.</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-2">Container.of(add(2)).ap(Container.of(3));
+// Container(5)
+
+// all together now
+
+Container.of(2).map(add).ap(Container.of(3));
+// Container(5)
+</textarea><button onclick="runSandbox('sandbox-2')">Run Code</button><div class="sandbox-output" id="output-sandbox-2">Output will appear here...</div></div>
+<p>There we are, nice and neat. Good news for <code>Container(3)</code> as it's been set free from the jail of the nested monadic function. It's worth mentioning again that <code>add</code>, in this case, gets partially applied during the first <code>map</code> so this only works when <code>add</code> is curried.</p>
+<p>We can define <code>ap</code> like so:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-3">Container.prototype.ap = function (otherContainer) {
+  return otherContainer.map(this.$value);
+};
+</textarea><button onclick="runSandbox('sandbox-3')">Run Code</button><div class="sandbox-output" id="output-sandbox-3">Output will appear here...</div></div>
+<p>Remember, <code>this.$value</code> will be a function and we'll be accepting another functor so we need only <code>map</code> it. And with that we have our interface definition:</p>
+<blockquote>
+<p>An <em>applicative functor</em> is a pointed functor with an <code>ap</code> method</p>
+</blockquote>
+<p>Note the dependence on <strong>pointed</strong>. The pointed interface is crucial here as we'll see throughout the following examples.</p>
+<p>Now, I sense your skepticism (or perhaps confusion and horror), but keep an open mind; this <code>ap</code> character will prove useful. Before we get into it, let's explore a nice property.</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-4">F.of(x).map(f) === F.of(f).ap(F.of(x));
+</textarea><button onclick="runSandbox('sandbox-4')">Run Code</button><div class="sandbox-output" id="output-sandbox-4">Output will appear here...</div></div>
+<p>In proper English, mapping <code>f</code> is equivalent to <code>ap</code>ing a functor of <code>f</code>. Or in properer English, we can place <code>x</code> into our container and <code>map(f)</code> OR we can lift both <code>f</code> and <code>x</code> into our container and <code>ap</code> them. This allows us to write in a left-to-right fashion:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-5">Maybe.of(add).ap(Maybe.of(2)).ap(Maybe.of(3));
+// Maybe(5)
+
+Task.of(add).ap(Task.of(2)).ap(Task.of(3));
+// Task(5)
+</textarea><button onclick="runSandbox('sandbox-5')">Run Code</button><div class="sandbox-output" id="output-sandbox-5">Output will appear here...</div></div>
+<p>One might even recognise the vague shape of a normal function call if viewed mid squint. We'll look at the pointfree version later in the chapter, but for now, this is the preferred way to write such code. Using <code>of</code>, each value gets transported to the magical land of containers, this parallel universe where each application can be async or null or what have you and <code>ap</code> will apply functions within this fantastical place. It's like building a ship in a bottle.</p>
+<p>Did you see there? We used <code>Task</code> in our example. This is a prime situation where applicative functors pull their weight. Let's look at a more in-depth example.</p>
+<h2>Coordination Motivation</h2>
+<p>Say we're building a travel site and we'd like to retrieve both a list of tourist destinations and local events. Each of these are separate, stand-alone api calls.</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-6">// Http.get :: String -&gt; Task Error HTML
+
+const renderPage = curry((destinations, events) =&gt; { /* render page */ });
+
+Task.of(renderPage).ap(Http.get('/destinations')).ap(Http.get('/events'));
+// Task("&lt;div&gt;some page with dest and events&lt;/div&gt;")
+</textarea><button onclick="runSandbox('sandbox-6')">Run Code</button><div class="sandbox-output" id="output-sandbox-6">Output will appear here...</div></div>
+<p>Both <code>Http</code> calls will happen instantly and <code>renderPage</code> will be called when both are resolved. Contrast this with the monadic version where one <code>Task</code> must finish before the next fires off. Since we don't need the destinations to retrieve events, we are free from sequential evaluation.</p>
+<p>Again, because we're using partial application to achieve this result, we must ensure <code>renderPage</code> is curried or it will not wait for both <code>Tasks</code> to finish. Incidentally, if you've ever had to do such a thing manually, you'll appreciate the astonishing simplicity of this interface. This is the kind of beautiful code that takes us one step closer to the singularity.</p>
+<p>Let's look at another example.</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-7">// $ :: String -&gt; IO DOM
+const $ = selector =&gt; new IO(() =&gt; document.querySelector(selector));
+
+// getVal :: String -&gt; IO String
+const getVal = compose(map(prop('value')), $);
+
+// signIn :: String -&gt; String -&gt; Bool -&gt; User
+const signIn = curry((username, password, rememberMe) =&gt; { /* signing in */ });
+
+IO.of(signIn).ap(getVal('#email')).ap(getVal('#password')).ap(IO.of(false));
+// IO({ id: 3, email: 'gg@allin.com' })
+</textarea><button onclick="runSandbox('sandbox-7')">Run Code</button><div class="sandbox-output" id="output-sandbox-7">Output will appear here...</div></div>
+<p><code>signIn</code> is a curried function of 3 arguments so we have to <code>ap</code> accordingly. With each <code>ap</code>, <code>signIn</code> receives one more argument until it is complete and runs. We can continue this pattern with as many arguments as necessary. Another thing to note is that two arguments end up naturally in <code>IO</code> whereas the last one needs a little help from <code>of</code> to lift it into <code>IO</code> since <code>ap</code> expects the function and all its arguments to be in the same type.</p>
+<h2>Bro, Do You Even Lift?</h2>
+<p>Let's examine a pointfree way to write these applicative calls. Since we know <code>map</code> is equal to <code>of/ap</code>, we can write generic functions that will <code>ap</code> as many times as we specify:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-8">const liftA2 = curry((g, f1, f2) =&gt; f1.map(g).ap(f2));
+
+const liftA3 = curry((g, f1, f2, f3) =&gt; f1.map(g).ap(f2).ap(f3));
+
+// liftA4, etc
+</textarea><button onclick="runSandbox('sandbox-8')">Run Code</button><div class="sandbox-output" id="output-sandbox-8">Output will appear here...</div></div>
+<p><code>liftA2</code> is a strange name. It sounds like one of the finicky freight elevators in a rundown factory or a vanity plate for a cheap limo company. Once enlightened, however, it's self explanatory: lift these pieces into the applicative functor world.</p>
+<p>When I first saw this 2-3-4 nonsense it struck me as ugly and unnecessary. After all, we can check the arity of functions in JavaScript and build this up dynamically. However, it is often useful to partially apply <code>liftA(N)</code> itself, so it cannot vary in argument length.</p>
+<p>Let's see this in use:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-9">// checkEmail :: User -&gt; Either String Email
+// checkName :: User -&gt; Either String String
+
+const user = {
+  name: 'John Doe',
+  email: 'blurp_blurp',
+};
+
+//  createUser :: Email -&gt; String -&gt; IO User
+const createUser = curry((email, name) =&gt; { /* creating... */ });
+
+Either.of(createUser).ap(checkEmail(user)).ap(checkName(user));
+// Left('invalid email')
+
+liftA2(createUser, checkEmail(user), checkName(user));
+// Left('invalid email')
+</textarea><button onclick="runSandbox('sandbox-9')">Run Code</button><div class="sandbox-output" id="output-sandbox-9">Output will appear here...</div></div>
+<p>Since <code>createUser</code> takes two arguments, we use the corresponding <code>liftA2</code>. The two statements are equivalent, but the <code>liftA2</code> version has no mention of <code>Either</code>. This makes it more generic and flexible since we are no longer married to a specific type.</p>
+<p>Let's see the previous examples written this way:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-10">liftA2(add, Maybe.of(2), Maybe.of(3));
+// Maybe(5)
+
+liftA2(renderPage, Http.get('/destinations'), Http.get('/events'));
+// Task('&lt;div&gt;some page with dest and events&lt;/div&gt;')
+
+liftA3(signIn, getVal('#email'), getVal('#password'), IO.of(false));
+// IO({ id: 3, email: 'gg@allin.com' })
+</textarea><button onclick="runSandbox('sandbox-10')">Run Code</button><div class="sandbox-output" id="output-sandbox-10">Output will appear here...</div></div>
+<h2>Operators</h2>
+<p>In languages like Haskell, Scala, PureScript, and Swift, where it is possible to create your own infix operators you may see syntax like this:</p>
+<pre><code class="language-hs">-- Haskell / PureScript
+add &lt;$&gt; Right 2 &lt;*&gt; Right 3
+</code></pre>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-11">// JavaScript
+map(add, Right(2)).ap(Right(3));
+</textarea><button onclick="runSandbox('sandbox-11')">Run Code</button><div class="sandbox-output" id="output-sandbox-11">Output will appear here...</div></div>
+<p>It's helpful to know that <code>&lt;$&gt;</code> is <code>map</code> (aka <code>fmap</code>) and <code>&lt;*&gt;</code> is just <code>ap</code>. This allows for a more natural function application style and can help remove some parenthesis.</p>
+<h2>Free Can Openers</h2>
+<p><img alt="http://www.breannabeckmeyer.com/" src="images/canopener.jpg"/></p>
+<p>We haven't spoken much about derived functions. Seeing as all of these interfaces are built off of each other and obey a set of laws, we can define some weaker interfaces in terms of the stronger ones.</p>
+<p>For instance, we know that an applicative is first a functor, so if we have an applicative instance, surely we can define a functor for our type.</p>
+<p>This kind of perfect computational harmony is possible because we're working within a mathematical framework. Mozart couldn't have done better even if he had torrented Ableton as a child.</p>
+<p>I mentioned earlier that <code>of/ap</code> is equivalent to <code>map</code>. We can use this knowledge to define <code>map</code> for free:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-12">// map derived from of/ap
+X.prototype.map = function map(f) {
+  return this.constructor.of(f).ap(this);
+};
+</textarea><button onclick="runSandbox('sandbox-12')">Run Code</button><div class="sandbox-output" id="output-sandbox-12">Output will appear here...</div></div>
+<p>Monads are at the top of the food chain, so to speak, so if we have <code>chain</code>, we get functor and applicative for free:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-13">// map derived from chain
+X.prototype.map = function map(f) {
+  return this.chain(a =&gt; this.constructor.of(f(a)));
+};
+
+// ap derived from chain/map
+X.prototype.ap = function ap(other) {
+  return this.chain(f =&gt; other.map(f));
+};
+</textarea><button onclick="runSandbox('sandbox-13')">Run Code</button><div class="sandbox-output" id="output-sandbox-13">Output will appear here...</div></div>
+<p>If we can define a monad, we can define both the applicative and functor interfaces. This is quite remarkable as we get all of these can openers for free. We can even examine a type and automate this process.</p>
+<p>It should be pointed out that part of <code>ap</code>'s appeal is the ability to run things concurrently so defining it via <code>chain</code> is missing out on that optimization. Despite that, it's good to have an immediate working interface while one works out the best possible implementation.</p>
+<p>Why not just use monads and be done with it, you ask? It's good practice to work with the level of power you need, no more, no less. This keeps cognitive load to a minimum by ruling out possible functionality. For this reason, it's good to favor applicatives over monads.</p>
+<p>Monads have the unique ability to sequence computation, assign variables, and halt further execution all thanks to the downward nesting structure. When one sees applicatives in use, they needn't concern themselves with any of that business.</p>
+<p>Now, on to the legalities ...</p>
+<h2>Laws</h2>
+<p>Like the other mathematical constructs we've explored, applicative functors hold some useful properties for us to rely on in our daily code. First off, you should know that applicatives are "closed under composition", meaning <code>ap</code> will never change container types on us (yet another reason to favor over monads). That's not to say we cannot have multiple different effects - we can stack our types knowing that they will remain the same during the entirety of our application.</p>
+<p>To demonstrate:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-14">const tOfM = compose(Task.of, Maybe.of);
+
+liftA2(liftA2(concat), tOfM('Rainy Days and Mondays'), tOfM(' always get me down'));
+// Task(Maybe(Rainy Days and Mondays always get me down))
+</textarea><button onclick="runSandbox('sandbox-14')">Run Code</button><div class="sandbox-output" id="output-sandbox-14">Output will appear here...</div></div>
+<p>See, no need to worry about different types getting in the mix.</p>
+<p>Time to look at our favorite categorical law: <em>identity</em>:</p>
+<h3>Identity</h3>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-15">// identity
+A.of(id).ap(v) === v;
+</textarea><button onclick="runSandbox('sandbox-15')">Run Code</button><div class="sandbox-output" id="output-sandbox-15">Output will appear here...</div></div>
+<p>Right, so applying <code>id</code> all from within a functor shouldn't alter the value in <code>v</code>. For example:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-16">const v = Identity.of('Pillow Pets');
+Identity.of(id).ap(v) === v;
+</textarea><button onclick="runSandbox('sandbox-16')">Run Code</button><div class="sandbox-output" id="output-sandbox-16">Output will appear here...</div></div>
+<p><code>Identity.of(id)</code> makes me chuckle at its futility. Anyway, what's interesting is that, as we've already established, <code>of/ap</code> is the same as <code>map</code> so this law follows directly from functor identity: <code>map(id) == id</code>.</p>
+<p>The beauty in using these laws is that, like a militant kindergarten gym coach, they force all of our interfaces to play well together.</p>
+<h3>Homomorphism</h3>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-17">// homomorphism
+A.of(f).ap(A.of(x)) === A.of(f(x));
+</textarea><button onclick="runSandbox('sandbox-17')">Run Code</button><div class="sandbox-output" id="output-sandbox-17">Output will appear here...</div></div>
+<p>A <em>homomorphism</em> is just a structure preserving map. In fact, a functor is just a <em>homomorphism</em> between categories as it preserves the original category's structure under the mapping.</p>
+<p>We're really just stuffing our normal functions and values into a container and running the computation in there so it should come as no surprise that we will end up with the same result if we apply the whole thing inside the container (left side of the equation) or apply it outside, then place it in there (right side).</p>
+<p>A quick example:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-18">Either.of(toUpperCase).ap(Either.of('oreos')) === Either.of(toUpperCase('oreos'));
+</textarea><button onclick="runSandbox('sandbox-18')">Run Code</button><div class="sandbox-output" id="output-sandbox-18">Output will appear here...</div></div>
+<h3>Interchange</h3>
+<p>The <em>interchange</em> law states that it doesn't matter if we choose to lift our function into the left or right side of <code>ap</code>.</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-19">// interchange
+v.ap(A.of(x)) === A.of(f =&gt; f(x)).ap(v);
+</textarea><button onclick="runSandbox('sandbox-19')">Run Code</button><div class="sandbox-output" id="output-sandbox-19">Output will appear here...</div></div>
+<p>Here is an example:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-20">const v = Task.of(reverse);
+const x = 'Sparklehorse';
+
+v.ap(Task.of(x)) === Task.of(f =&gt; f(x)).ap(v);
+</textarea><button onclick="runSandbox('sandbox-20')">Run Code</button><div class="sandbox-output" id="output-sandbox-20">Output will appear here...</div></div>
+<h3>Composition</h3>
+<p>And finally composition which is just a way to check that our standard function composition holds when applying inside of containers.</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-21">// composition
+A.of(compose).ap(u).ap(v).ap(w) === u.ap(v.ap(w));
+</textarea><button onclick="runSandbox('sandbox-21')">Run Code</button><div class="sandbox-output" id="output-sandbox-21">Output will appear here...</div></div>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-22">const u = IO.of(toUpperCase);
+const v = IO.of(concat('&amp; beyond'));
+const w = IO.of('blood bath ');
+
+IO.of(compose).ap(u).ap(v).ap(w) === u.ap(v.ap(w));
+</textarea><button onclick="runSandbox('sandbox-22')">Run Code</button><div class="sandbox-output" id="output-sandbox-22">Output will appear here...</div></div>
+<h2>In Summary</h2>
+<p>A good use case for applicatives is when one has multiple functor arguments. They give us the ability to apply functions to arguments all within the functor world. Though we could already do so with monads, we should prefer applicative functors when we aren't in need of monadic specific functionality.</p>
+<p>We're almost finished with container apis. We've learned how to <code>map</code>, <code>chain</code>, and now <code>ap</code> functions. In the next chapter, we'll learn how to work better with multiple functors and disassemble them in a principled way.</p>
+<p><a href="ch11.html">Chapter 11: Transformation Again, Naturally</a></p>
+<h2>Exercises</h2>
+<p>{% exercise %}<br/>
+Write a function that adds two possibly null numbers together using <code>Maybe</code> and <code>ap</code>.  </p>
+<p>{% initial src="./exercises/ch10/exercise_a.js#L3;" %}  </p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-23">// safeAdd :: Maybe Number -&gt; Maybe Number -&gt; Maybe Number  
+const safeAdd = undefined;  
+</textarea><button onclick="runSandbox('sandbox-23')">Run Code</button><div class="sandbox-output" id="output-sandbox-23">Output will appear here...</div></div>
+<p>{% solution src="./exercises/ch10/solution_a.js" %}<br/>
+{% validation src="./exercises/ch10/validation_a.js" %}<br/>
+{% context src="./exercises/support.js" %}<br/>
+{% endexercise %}  </p>
+<hr/>
+<p>{% exercise %}<br/>
+Rewrite <code>safeAdd</code> from exercise_b to use <code>liftA2</code> instead of <code>ap</code>.  </p>
+<p>{% initial src="./exercises/ch10/exercise_b.js#L3;" %}  </p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-24">// safeAdd :: Maybe Number -&gt; Maybe Number -&gt; Maybe Number  
+const safeAdd = undefined;  
+</textarea><button onclick="runSandbox('sandbox-24')">Run Code</button><div class="sandbox-output" id="output-sandbox-24">Output will appear here...</div></div>
+<p>{% solution src="./exercises/ch10/solution_b.js" %}<br/>
+{% validation src="./exercises/ch10/validation_b.js" %}<br/>
+{% context src="./exercises/support.js" %}<br/>
+{% endexercise %}  </p>
+<hr/>
+<p>For the next exercise, we consider the following helpers:  </p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-25">const localStorage = {  
+  player1: { id:1, name: 'Albert' },  
+  player2: { id:2, name: 'Theresa' },  
+};  
+
+// getFromCache :: String -&gt; IO User  
+const getFromCache = x =&gt; new IO(() =&gt; localStorage[x]);  
+
+// game :: User -&gt; User -&gt; String  
+const game = curry((p1, p2) =&gt; `${p1.name} vs ${p2.name}`);  
+</textarea><button onclick="runSandbox('sandbox-25')">Run Code</button><div class="sandbox-output" id="output-sandbox-25">Output will appear here...</div></div>
+<p>{% exercise %}<br/>
+Write an IO that gets both player1 and player2 from the cache and starts the game.  </p>
+<p>{% initial src="./exercises/ch10/exercise_c.js#L16;" %}  </p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-26">// startGame :: IO String  
+const startGame = undefined;  
+</textarea><button onclick="runSandbox('sandbox-26')">Run Code</button><div class="sandbox-output" id="output-sandbox-26">Output will appear here...</div></div>
+<p>{% solution src="./exercises/ch10/solution_c.js" %}<br/>
+{% validation src="./exercises/ch10/validation_c.js" %}<br/>
+{% context src="./exercises/support.js" %}<br/>
+{% endexercise %}  </p>
+<script>
+function runSandbox(id) {
+    const code = document.getElementById('code-' + id).value;
+    const output = document.getElementById('output-' + id);
+    output.innerHTML = '';
+    
+    const originalLog = console.log;
+    console.log = function(...args) {
+        args.forEach(arg => {
+            output.innerHTML += '<div>' + arg + '</div>';
+        });
+        originalLog.apply(console, args);
+    };
+
+    try {
+        eval(code);
+    } catch (e) {
+        output.innerHTML += '<div style="color: red;">Error: ' + e.message + '</div>';
+    } finally {
+        console.log = originalLog;
+    }
+}
+</script>
+<style>
+.sandbox { border: 1px solid #ccc; padding: 10px; margin: 10px 0; border-radius: 5px; background-color: #f9f9f9; }
+.sandbox textarea { width: 100%; height: 100px; font-family: monospace; margin-bottom: 5px; padding: 5px; box-sizing: border-box; }
+.sandbox button { padding: 5px 10px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 3px; }
+.sandbox button:hover { background-color: #0056b3; }
+.sandbox-output { background: #fff; padding: 10px; margin-top: 5px; border: 1px solid #ddd; min-height: 40px; font-family: monospace; }
+</style>

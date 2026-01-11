@@ -1,0 +1,660 @@
+<h1>Chapter 08: Tupperware</h1>
+<h2>The Mighty Container</h2>
+<p><img alt="http://blog.dwinegar.com/2011/06/another-jar.html" src="images/jar.jpg"/></p>
+<p>We've seen how to write programs which pipe data through a series of pure functions. They are declarative specifications of behaviour. But what about control flow, error handling, asynchronous actions, state and, dare I say, effects?! In this chapter, we will discover the foundation upon which all of these helpful abstractions are built.</p>
+<p>First we will create a container. This container must hold any type of value; a ziplock that holds only tapioca pudding is rarely useful. It will be an object, but we will not give it properties and methods in the OO sense. No, we will treat it like a treasure chest - a special box that cradles our valuable data.</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-0">class Container {
+  constructor(x) {
+    this.$value = x;
+  }
+
+  static of(x) {
+    return new Container(x);
+  }
+}
+</textarea><button onclick="runSandbox('sandbox-0')">Run Code</button><div class="sandbox-output" id="output-sandbox-0">Output will appear here...</div></div>
+<p>Here is our first container. We've thoughtfully named it <code>Container</code>. We will use <code>Container.of</code> as a constructor which saves us from having to write that awful <code>new</code> keyword all over the place. There's more to the <code>of</code> function than meets the eye, but for now, think of it as the proper way to place values into our container.</p>
+<p>Let's examine our brand new box...</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-1">Container.of(3);
+// Container(3)
+
+Container.of('hotdogs');
+// Container("hotdogs")
+
+Container.of(Container.of({ name: 'yoda' }));
+// Container(Container({ name: 'yoda' }))
+</textarea><button onclick="runSandbox('sandbox-1')">Run Code</button><div class="sandbox-output" id="output-sandbox-1">Output will appear here...</div></div>
+<p>If you are using node, you will see <code>{$value: x}</code> even though we've got ourselves a <code>Container(x)</code>. Chrome will output the type properly, but no matter; as long as we understand what a <code>Container</code> looks like, we'll be fine. In some environments you can overwrite the <code>inspect</code> method if you'd like, but we will not be so thorough. For this book, we will write the conceptual output as if we'd overwritten <code>inspect</code> as it's much more instructive than <code>{$value: x}</code> for pedagogical as well as aesthetic reasons.</p>
+<p>Let's make a few things clear before we move on:</p>
+<ul>
+<li>
+<p><code>Container</code> is an object with one property. Lots of containers just hold one thing, though they aren't limited to one. We've arbitrarily named its property <code>$value</code>.</p>
+</li>
+<li>
+<p>The <code>$value</code> cannot be one specific type or our <code>Container</code> would hardly live up to the name.</p>
+</li>
+<li>
+<p>Once data goes into the <code>Container</code> it stays there. We <em>could</em> get it out by using <code>.$value</code>, but that would defeat the purpose.</p>
+</li>
+</ul>
+<p>The reasons we're doing this will become clear as a mason jar, but for now, bear with me.</p>
+<h2>My First Functor</h2>
+<p>Once our value, whatever it may be, is in the container, we'll need a way to run functions on it.</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-2">// (a -&gt; b) -&gt; Container a -&gt; Container b
+Container.prototype.map = function (f) {
+  return Container.of(f(this.$value));
+};
+</textarea><button onclick="runSandbox('sandbox-2')">Run Code</button><div class="sandbox-output" id="output-sandbox-2">Output will appear here...</div></div>
+<p>Why, it's just like Array's famous <code>map</code>, except we have <code>Container a</code> instead of <code>[a]</code>. And it works essentially the same way:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-3">Container.of(2).map(two =&gt; two + 2); 
+// Container(4)
+
+Container.of('flamethrowers').map(s =&gt; s.toUpperCase()); 
+// Container('FLAMETHROWERS')
+
+Container.of('bombs').map(append(' away')).map(prop('length')); 
+// Container(10)
+</textarea><button onclick="runSandbox('sandbox-3')">Run Code</button><div class="sandbox-output" id="output-sandbox-3">Output will appear here...</div></div>
+<p>We can work with our value without ever having to leave the <code>Container</code>. This is a remarkable thing. Our value in the <code>Container</code> is handed to the <code>map</code> function so we can fuss with it and afterward, returned to its <code>Container</code> for safe keeping. As a result of never leaving the <code>Container</code>, we can continue to <code>map</code> away, running functions as we please. We can even change the type as we go along as demonstrated in the latter of the three examples.</p>
+<p>Wait a minute, if we keep calling <code>map</code>, it appears to be some sort of composition! What mathematical magic is at work here? Well chaps, we've just discovered <em>Functors</em>.</p>
+<blockquote>
+<p>A Functor is a type that implements <code>map</code> and obeys some laws</p>
+</blockquote>
+<p>Yes, <em>Functor</em> is simply an interface with a contract. We could have just as easily named it <em>Mappable</em>, but now, where's the <em>fun</em> in that? Functors come from category theory and we'll look at the maths in detail toward the end of the chapter, but for now, let's work on intuition and practical uses for this bizarrely named interface.</p>
+<p>What reason could we possibly have for bottling up a value and using <code>map</code> to get at it? The answer reveals itself if we choose a better question: What do we gain from asking our container to apply functions for us? Well, abstraction of function application. When we <code>map</code> a function, we ask the container type to run it for us. This is a very powerful concept, indeed.</p>
+<h2>Schrödinger's Maybe</h2>
+<p><img alt="cool cat, need reference" src="images/cat.png"/></p>
+<p><code>Container</code> is fairly boring. In fact, it is usually called <code>Identity</code> and has about the same impact as our <code>id</code> function (again there is a mathematical connection we'll look at when the time is right). However, there are other functors, that is, container-like types that have a proper <code>map</code> function, which can provide useful behaviour whilst mapping. Let's define one now.</p>
+<blockquote>
+<p>A complete implementation is given in the <a href="./appendix_b.md#Maybe">Appendix B</a></p>
+</blockquote>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-4">class Maybe {
+  static of(x) {
+    return new Maybe(x);
+  }
+
+  get isNothing() {
+    return this.$value === null || this.$value === undefined;
+  }
+
+  constructor(x) {
+    this.$value = x;
+  }
+
+  map(fn) {
+    return this.isNothing ? this : Maybe.of(fn(this.$value));
+  }
+
+  inspect() {
+    return this.isNothing ? 'Nothing' : `Just(${inspect(this.$value)})`;
+  }
+}
+</textarea><button onclick="runSandbox('sandbox-4')">Run Code</button><div class="sandbox-output" id="output-sandbox-4">Output will appear here...</div></div>
+<p>Now, <code>Maybe</code> looks a lot like <code>Container</code> with one minor change: it will first check to see if it has a value before calling the supplied function. This has the effect of side stepping those pesky nulls as we <code>map</code>(Note that this implementation is simplified for teaching).</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-5">Maybe.of('Malkovich Malkovich').map(match(/a/ig));
+// Just(True)
+
+Maybe.of(null).map(match(/a/ig));
+// Nothing
+
+Maybe.of({ name: 'Boris' }).map(prop('age')).map(add(10));
+// Nothing
+
+Maybe.of({ name: 'Dinah', age: 14 }).map(prop('age')).map(add(10));
+// Just(24)
+</textarea><button onclick="runSandbox('sandbox-5')">Run Code</button><div class="sandbox-output" id="output-sandbox-5">Output will appear here...</div></div>
+<p>Notice our app doesn't explode with errors as we map functions over our null values. This is because <code>Maybe</code> will take care to check for a value each and every time it applies a function.</p>
+<p>This dot syntax is perfectly fine and functional, but for reasons mentioned in Part 1, we'd like to maintain our pointfree style. As it happens, <code>map</code> is fully equipped to delegate to whatever functor it receives:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-6">// map :: Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+const map = curry((f, anyFunctor) =&gt; anyFunctor.map(f));
+</textarea><button onclick="runSandbox('sandbox-6')">Run Code</button><div class="sandbox-output" id="output-sandbox-6">Output will appear here...</div></div>
+<p>This is delightful as we can carry on with composition per usual and <code>map</code> will work as expected. This is the case with ramda's <code>map</code> as well. We'll use dot notation when it's instructive and the pointfree version when it's convenient. Did you notice that? I've sneakily introduced extra notation into our type signature. The <code>Functor f =&gt;</code> tells us that <code>f</code> must be a Functor. Not that difficult, but I felt I should mention it.</p>
+<h2>Use Cases</h2>
+<p>In the wild, we'll typically see <code>Maybe</code> used in functions which might fail to return a result.</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-7">// safeHead :: [a] -&gt; Maybe(a)
+const safeHead = xs =&gt; Maybe.of(xs[0]);
+
+// streetName :: Object -&gt; Maybe String
+const streetName = compose(map(prop('street')), safeHead, prop('addresses'));
+
+streetName({ addresses: [] });
+// Nothing
+
+streetName({ addresses: [{ street: 'Shady Ln.', number: 4201 }] });
+// Just('Shady Ln.')
+</textarea><button onclick="runSandbox('sandbox-7')">Run Code</button><div class="sandbox-output" id="output-sandbox-7">Output will appear here...</div></div>
+<p><code>safeHead</code> is like our normal <code>head</code>, but with added type safety. A curious thing happens when <code>Maybe</code> is introduced into our code; we are forced to deal with those sneaky <code>null</code> values. The <code>safeHead</code> function is honest and up front about its possible failure - there's really nothing to be ashamed of - and so it returns a <code>Maybe</code> to inform us of this matter. We are more than merely <em>informed</em>, however, because we are forced to <code>map</code> to get at the value we want since it is tucked away inside the <code>Maybe</code> object. Essentially, this is a <code>null</code> check enforced by the <code>safeHead</code> function itself. We can now sleep better at night knowing a <code>null</code> value won't rear its ugly, decapitated head when we least expect it. APIs like this will upgrade a flimsy application from paper and tacks to wood and nails. They will guarantee safer software.</p>
+<p>Sometimes a function might return a <code>Nothing</code> explicitly to signal failure. For instance:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-8">// withdraw :: Number -&gt; Account -&gt; Maybe(Account)
+const withdraw = curry((amount, { balance }) =&gt;
+  Maybe.of(balance &gt;= amount ? { balance: balance - amount } : null));
+
+// This function is hypothetical, not implemented here... nor anywhere else.
+// updateLedger :: Account -&gt; Account 
+const updateLedger = account =&gt; account;
+
+// remainingBalance :: Account -&gt; String
+const remainingBalance = ({ balance }) =&gt; `Your balance is $${balance}`;
+
+// finishTransaction :: Account -&gt; String
+const finishTransaction = compose(remainingBalance, updateLedger);
+
+
+// getTwenty :: Account -&gt; Maybe(String)
+const getTwenty = compose(map(finishTransaction), withdraw(20));
+
+getTwenty({ balance: 200.00 }); 
+// Just('Your balance is $180')
+
+getTwenty({ balance: 10.00 });
+// Nothing
+</textarea><button onclick="runSandbox('sandbox-8')">Run Code</button><div class="sandbox-output" id="output-sandbox-8">Output will appear here...</div></div>
+<p><code>withdraw</code> will tip its nose at us and return <code>Nothing</code> if we're short on cash. This function also communicates its fickleness and leaves us no choice, but to <code>map</code> everything afterwards. The difference is that the <code>null</code> was intentional here. Instead of a <code>Just('..')</code>, we get the <code>Nothing</code> back to signal failure and our application effectively halts in its tracks. This is important to note: if the <code>withdraw</code> fails, then <code>map</code> will sever the rest of our computation since it doesn't ever run the mapped functions, namely <code>finishTransaction</code>. This is precisely the intended behaviour as we'd prefer not to update our ledger or show a new balance if we hadn't successfully withdrawn funds.</p>
+<h2>Releasing the Value</h2>
+<p>One thing people often miss is that there will always be an end of the line; some effecting function that sends JSON along, or prints to the screen, or alters our filesystem, or what have you. We cannot deliver the output with <code>return</code>, we must run some function or another to send it out into the world. We can phrase it like a Zen Buddhist koan: "If a program has no observable effect, does it even run?". Does it run correctly for its own satisfaction? I suspect it merely burns some cycles and goes back to sleep...</p>
+<p>Our application's job is to retrieve, transform, and carry that data along until it's time to say goodbye and the function which does so may be mapped, thus the value needn't leave the warm womb of its container. Indeed, a common error is to try to remove the value from our <code>Maybe</code> one way or another as if the possible value inside will suddenly materialize and all will be forgiven. We must understand it may be a branch of code where our value is not around to live up to its destiny.  Our code, much like Schrödinger's cat, is in two states at once and should maintain that fact until the final function. This gives our code a linear flow despite the logical branching.</p>
+<p>There is, however, an escape hatch. If we would rather return a custom value and continue on, we can use a little helper called <code>maybe</code>.</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-9">// maybe :: b -&gt; (a -&gt; b) -&gt; Maybe a -&gt; b
+const maybe = curry((v, f, m) =&gt; {
+  if (m.isNothing) {
+    return v;
+  }
+
+  return f(m.$value);
+});
+
+// getTwenty :: Account -&gt; String
+const getTwenty = compose(maybe('You\'re broke!', finishTransaction), withdraw(20));
+
+getTwenty({ balance: 200.00 }); 
+// 'Your balance is $180.00'
+
+getTwenty({ balance: 10.00 }); 
+// 'You\'re broke!'
+</textarea><button onclick="runSandbox('sandbox-9')">Run Code</button><div class="sandbox-output" id="output-sandbox-9">Output will appear here...</div></div>
+<p>We will now either return a static value (of the same type that <code>finishTransaction</code> returns) or continue on merrily finishing up the transaction sans <code>Maybe</code>. With <code>maybe</code>, we are witnessing the equivalent of an <code>if/else</code> statement whereas with <code>map</code>, the imperative analog would be: <code>if (x !== null) { return f(x) }</code>.</p>
+<p>The introduction of <code>Maybe</code> can cause some initial discomfort. Users of Swift and Scala will know what I mean as it's baked right into the core libraries under the guise of <code>Option(al)</code>. When pushed to deal with <code>null</code> checks all the time (and there are times we know with absolute certainty the value exists), most people can't help but feel it's a tad laborious. However, with time, it will become second nature and you'll likely appreciate the safety. After all, most of the time it will prevent cut corners and save our hides.</p>
+<p>Writing unsafe software is like taking care to paint each egg with pastels before hurling it into traffic; like building a retirement home with materials warned against by three little pigs. It will do us well to put some safety into our functions and <code>Maybe</code> helps us do just that.</p>
+<p>I'd be remiss if I didn't mention that the "real" implementation will split <code>Maybe</code> into two types: one for something and the other for nothing. This allows us to obey parametricity in <code>map</code> so values like <code>null</code> and <code>undefined</code> can still be mapped over and the universal qualification of the value in a functor will be respected. You'll often see types like <code>Some(x) / None</code> or <code>Just(x) / Nothing</code> instead of a <code>Maybe</code> that does a <code>null</code> check on its value.</p>
+<h2>Pure Error Handling</h2>
+<p><img alt="pick a hand... need a reference" src="images/fists.jpg"/></p>
+<p>It may come as a shock, but <code>throw/catch</code> is not very pure. When an error is thrown, instead of returning an output value, we sound the alarms! The function attacks, spewing thousands of 0s and 1s like shields and spears in an electric battle against our intruding input. With our new friend <code>Either</code>, we can do better than to declare war on input, we can respond with a polite message. Let's take a look:</p>
+<blockquote>
+<p>A complete implementation is given in the <a href="./appendix_b.md#Either">Appendix B</a></p>
+</blockquote>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-10">class Either {
+  static of(x) {
+    return new Right(x);
+  }
+
+  constructor(x) {
+    this.$value = x;
+  }
+}
+
+class Left extends Either {
+  map(f) {
+    return this;
+  }
+
+  inspect() {
+    return `Left(${inspect(this.$value)})`;
+  }
+}
+
+class Right extends Either {
+  map(f) {
+    return Either.of(f(this.$value));
+  }
+
+  inspect() {
+    return `Right(${inspect(this.$value)})`;
+  }
+}
+
+const left = x =&gt; new Left(x);
+</textarea><button onclick="runSandbox('sandbox-10')">Run Code</button><div class="sandbox-output" id="output-sandbox-10">Output will appear here...</div></div>
+<p><code>Left</code> and <code>Right</code> are two subclasses of an abstract type we call <code>Either</code>. I've skipped the ceremony of creating the <code>Either</code> superclass as we won't ever use it, but it's good to be aware. Now then, there's nothing new here besides the two types. Let's see how they act:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-11">Either.of('rain').map(str =&gt; `b${str}`); 
+// Right('brain')
+
+left('rain').map(str =&gt; `It's gonna ${str}, better bring your umbrella!`); 
+// Left('rain')
+
+Either.of({ host: 'localhost', port: 80 }).map(prop('host'));
+// Right('localhost')
+
+left('rolls eyes...').map(prop('host'));
+// Left('rolls eyes...')
+</textarea><button onclick="runSandbox('sandbox-11')">Run Code</button><div class="sandbox-output" id="output-sandbox-11">Output will appear here...</div></div>
+<p><code>Left</code> is the teenagery sort and ignores our request to <code>map</code> over it. <code>Right</code> will work just like <code>Container</code> (a.k.a Identity). The power comes from the ability to embed an error message within the <code>Left</code>.</p>
+<p>Suppose we have a function that might not succeed. How about we calculate an age from a birth date. We could use <code>Nothing</code> to signal failure and branch our program, however, that doesn't tell us much. Perhaps, we'd like to know why it failed. Let's write this using <code>Either</code>.</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-12">const moment = require('moment');
+
+// getAge :: Date -&gt; User -&gt; Either(String, Number)
+const getAge = curry((now, user) =&gt; {
+  const birthDate = moment(user.birthDate, 'YYYY-MM-DD');
+
+  return birthDate.isValid()
+    ? Either.of(now.diff(birthDate, 'years'))
+    : left('Birth date could not be parsed');
+});
+
+getAge(moment(), { birthDate: '2005-12-12' });
+// Right(9)
+
+getAge(moment(), { birthDate: 'July 4, 2001' });
+// Left('Birth date could not be parsed')
+</textarea><button onclick="runSandbox('sandbox-12')">Run Code</button><div class="sandbox-output" id="output-sandbox-12">Output will appear here...</div></div>
+<p>Now, just like <code>Nothing</code>, we are short-circuiting our app when we return a <code>Left</code>. The difference, is now we have a clue as to why our program has derailed. Something to notice is that we return <code>Either(String, Number)</code>, which holds a <code>String</code> as its left value and a <code>Number</code> as its <code>Right</code>. This type signature is a bit informal as we haven't taken the time to define an actual <code>Either</code> superclass, however, we learn a lot from the type. It informs us that we're either getting an error message or the age back.</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-13">// fortune :: Number -&gt; String
+const fortune = compose(concat('If you survive, you will be '), toString, add(1));
+
+// zoltar :: User -&gt; Either(String, _)
+const zoltar = compose(map(console.log), map(fortune), getAge(moment()));
+
+zoltar({ birthDate: '2005-12-12' });
+// 'If you survive, you will be 10'
+// Right(undefined)
+
+zoltar({ birthDate: 'balloons!' });
+// Left('Birth date could not be parsed')
+</textarea><button onclick="runSandbox('sandbox-13')">Run Code</button><div class="sandbox-output" id="output-sandbox-13">Output will appear here...</div></div>
+<p>When the <code>birthDate</code> is valid, the program outputs its mystical fortune to the screen for us to behold. Otherwise, we are handed a <code>Left</code> with the error message plain as day though still tucked away in its container. That acts just as if we'd thrown an error, but in a calm, mild manner fashion as opposed to losing its temper and screaming like a child when something goes wrong.</p>
+<p>In this example, we are logically branching our control flow depending on the validity of the birth date, yet it reads as one linear motion from right to left rather than climbing through the curly braces of a conditional statement. Usually, we'd move the <code>console.log</code> out of our <code>zoltar</code> function and <code>map</code> it at the time of calling, but it's helpful to see how the <code>Right</code> branch differs. We use <code>_</code> in the right branch's type signature to indicate it's a value that should be ignored (In some browsers you have to use <code>console.log.bind(console)</code> to use it first class).</p>
+<p>I'd like to take this opportunity to point out something you may have missed: <code>fortune</code>, despite its use with <code>Either</code> in this example, is completely ignorant of any functors milling about. This was also the case with <code>finishTransaction</code> in the previous example. At the time of calling, a function can be surrounded by <code>map</code>, which transforms it from a non-functory function to a functory one, in informal terms. We call this process <em>lifting</em>. Functions tend to be better off working with normal data types rather than container types, then <em>lifted</em> into the right container as deemed necessary. This leads to simpler, more reusable functions that can be altered to work with any functor on demand.</p>
+<p><code>Either</code> is great for casual errors like validation as well as more serious, stop the show errors like missing files or broken sockets. Try replacing some of the <code>Maybe</code> examples with <code>Either</code> to give better feedback.</p>
+<p>Now, I can't help but feel I've done <code>Either</code> a disservice by introducing it as merely a container for error messages. It captures logical disjunction (a.k.a <code>||</code>) in a type. It also encodes the idea of a <em>Coproduct</em> from category theory, which won't be touched on in this book, but is well worth reading up on as there's properties to be exploited. It is the canonical sum type (or disjoint union of sets) because its amount of possible inhabitants is the sum of the two contained types (I know that's a bit hand wavy so here's a <a href="https://www.schoolofhaskell.com/school/to-infinity-and-beyond/pick-of-the-week/sum-types">great article</a>). There are many things <code>Either</code> can be, but as a functor, it is used for its error handling.</p>
+<p>Just like with <code>Maybe</code>, we have little <code>either</code>, which behaves similarly, but takes two functions instead of one and a static value. Each function should return the same type:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-14">// either :: (a -&gt; c) -&gt; (b -&gt; c) -&gt; Either a b -&gt; c
+const either = curry((f, g, e) =&gt; {
+  let result;
+
+  switch (e.constructor) {
+    case Left:
+      result = f(e.$value);
+      break;
+
+    case Right:
+      result = g(e.$value);
+      break;
+
+    // No Default
+  }
+
+  return result;
+});
+
+// zoltar :: User -&gt; _
+const zoltar = compose(console.log, either(id, fortune), getAge(moment()));
+
+zoltar({ birthDate: '2005-12-12' });
+// 'If you survive, you will be 10'
+// undefined
+
+zoltar({ birthDate: 'balloons!' });
+// 'Birth date could not be parsed'
+// undefined
+</textarea><button onclick="runSandbox('sandbox-14')">Run Code</button><div class="sandbox-output" id="output-sandbox-14">Output will appear here...</div></div>
+<p>Finally, a use for that mysterious <code>id</code> function. It simply parrots back the value in the <code>Left</code> to pass the error message to <code>console.log</code>. We've made our fortune-telling app more robust by enforcing error handling from within <code>getAge</code>. We either slap the user with a hard truth like a high five from a palm reader or we carry on with our process. And with that, we're ready to move on to an entirely different type of functor.</p>
+<h2>Old McDonald Had Effects...</h2>
+<p><img alt="dominoes.. need a reference" src="images/dominoes.jpg"/></p>
+<p>In our chapter about purity we saw a peculiar example of a pure function. This function contained a side-effect, but we dubbed it pure by wrapping its action in another function. Here's another example of this:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-15">// getFromStorage :: String -&gt; (_ -&gt; String)
+const getFromStorage = key =&gt; () =&gt; localStorage[key];
+</textarea><button onclick="runSandbox('sandbox-15')">Run Code</button><div class="sandbox-output" id="output-sandbox-15">Output will appear here...</div></div>
+<p>Had we not surrounded its guts in another function, <code>getFromStorage</code> would vary its output depending on external circumstance. With the sturdy wrapper in place, we will always get the same output per input: a function that, when called, will retrieve a particular item from <code>localStorage</code>. And just like that (maybe throw in a few Hail Mary's) we've cleared our conscience and all is forgiven.</p>
+<p>Except, this isn't particularly useful now is it. Like a collectible action figure in its original packaging, we can't actually play with it. If only there were a way to reach inside of the container and get at its contents... Enter <code>IO</code>.</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-16">class IO {
+  static of(x) {
+    return new IO(() =&gt; x);
+  }
+
+  constructor(fn) {
+    this.$value = fn;
+  }
+
+  map(fn) {
+    return new IO(compose(fn, this.$value));
+  }
+
+  inspect() {
+    return `IO(${inspect(this.$value)})`;
+  }
+}
+</textarea><button onclick="runSandbox('sandbox-16')">Run Code</button><div class="sandbox-output" id="output-sandbox-16">Output will appear here...</div></div>
+<p><code>IO</code> differs from the previous functors in that the <code>$value</code> is always a function. We don't
+think of its <code>$value</code> as a function, however - that is an implementation detail and we best
+ignore it. What is happening is exactly what we saw with the <code>getFromStorage</code> example: <code>IO</code>
+delays the impure action by capturing it in a function wrapper. As such, we think of <code>IO</code> as
+containing the return value of the wrapped action and not the wrapper itself. This is apparent
+in the <code>of</code> function: we have an <code>IO(x)</code>, the <code>IO(() =&gt; x)</code> is just necessary to
+avoid evaluation. Note that, to simplify reading, we'll show the hypothetical value contained
+in the <code>IO</code> as result; however in practice, you can't tell what this value is until you've
+actually unleashed the effects!</p>
+<p>Let's see it in use:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-17">// ioWindow :: IO Window
+const ioWindow = new IO(() =&gt; window);
+
+ioWindow.map(win =&gt; win.innerWidth);
+// IO(1430)
+
+ioWindow
+  .map(prop('location'))
+  .map(prop('href'))
+  .map(split('/'));
+// IO(['http:', '', 'localhost:8000', 'blog', 'posts'])
+
+
+// $ :: String -&gt; IO [DOM]
+const $ = selector =&gt; new IO(() =&gt; document.querySelectorAll(selector));
+
+$('#myDiv').map(head).map(div =&gt; div.innerHTML);
+// IO('I am some inner html')
+</textarea><button onclick="runSandbox('sandbox-17')">Run Code</button><div class="sandbox-output" id="output-sandbox-17">Output will appear here...</div></div>
+<p>Here, <code>ioWindow</code> is an actual <code>IO</code> that we can <code>map</code> over straight away, whereas <code>$</code> is a function that returns an <code>IO</code> after it's called. I've written out the <em>conceptual</em> return values to better express the <code>IO</code>, though, in reality, it will always be <code>{ $value: [Function] }</code>. When we <code>map</code> over our <code>IO</code>, we stick that function at the end of a composition which, in turn, becomes the new <code>$value</code> and so on. Our mapped functions do not run, they get tacked on the end of a computation we're building up, function by function, like carefully placing dominoes that we don't dare tip over. The result is reminiscent of Gang of Four's command pattern or a queue.</p>
+<p>Take a moment to channel your functor intuition. If we see past the implementation details, we should feel right at home mapping over any container no matter its quirks or idiosyncrasies. We have the functor laws, which we will explore toward the end of the chapter, to thank for this pseudo-psychic power. At any rate, we can finally play with impure values without sacrificing our precious purity.</p>
+<p>Now, we've caged the beast, but we'll still have to set it free at some point. Mapping over our <code>IO</code> has built up a mighty impure computation and running it is surely going to disturb the peace. So where and when can we pull the trigger? Is it even possible to run our <code>IO</code> and still wear white at our wedding? The answer is yes, if we put the onus on the calling code. Our pure code, despite the nefarious plotting and scheming, maintains its innocence and it's the caller who gets burdened with the responsibility of actually running the effects. Let's see an example to make this concrete.</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-18">// url :: IO String
+const url = new IO(() =&gt; window.location.href);
+
+// toPairs :: String -&gt; [[String]]
+const toPairs = compose(map(split('=')), split('&amp;'));
+
+// params :: String -&gt; [[String]]
+const params = compose(toPairs, last, split('?'));
+
+// findParam :: String -&gt; IO Maybe [String]
+const findParam = key =&gt; map(compose(Maybe.of, find(compose(eq(key), head)), params), url);
+
+// -- Impure calling code ----------------------------------------------
+
+// run it by calling $value()!
+findParam('searchTerm').$value();
+// Just(['searchTerm', 'wafflehouse'])
+</textarea><button onclick="runSandbox('sandbox-18')">Run Code</button><div class="sandbox-output" id="output-sandbox-18">Output will appear here...</div></div>
+<p>Our library keeps its hands clean by wrapping <code>url</code> in an <code>IO</code> and passing the buck to the caller. You might have also noticed that we have stacked our containers; it's perfectly reasonable to have a <code>IO(Maybe([x]))</code>, which is three functors deep (<code>Array</code> is most definitely a mappable container type) and exceptionally expressive.</p>
+<p>There's something that's been bothering me and we should rectify it immediately: <code>IO</code>'s <code>$value</code> isn't really its contained value, nor is it a private property. It is the pin in the grenade and it is meant to be pulled by a caller in the most public of ways. Let's rename this property to <code>unsafePerformIO</code> to remind our users of its volatility.</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-19">class IO {
+  constructor(io) {
+    this.unsafePerformIO = io;
+  }
+
+  map(fn) {
+    return new IO(compose(fn, this.unsafePerformIO));
+  }
+}
+</textarea><button onclick="runSandbox('sandbox-19')">Run Code</button><div class="sandbox-output" id="output-sandbox-19">Output will appear here...</div></div>
+<p>There, much better. Now our calling code becomes <code>findParam('searchTerm').unsafePerformIO()</code>, which is clear as day to users (and readers) of the application.</p>
+<p><code>IO</code> will be a loyal companion, helping us tame those feral impure actions. Next, we'll see a type similar in spirit, but having a drastically different use case.</p>
+<h2>Asynchronous Tasks</h2>
+<p>Callbacks are the narrowing spiral staircase to hell. They are control flow as designed by M.C. Escher. With each nested callback squeezed in between the jungle gym of curly braces and parenthesis, they feel like limbo in an oubliette (how low can we go?!). I'm getting claustrophobic chills just thinking about them. Not to worry, we have a much better way of dealing with asynchronous code and it starts with an "F".</p>
+<p>The internals are a bit too complicated to spill out all over the page here so we will use <code>Data.Task</code> (previously <code>Data.Future</code>) from Quildreen Motta's fantastic <a href="https://folktale.origamitower.com/">Folktale</a>. Behold some example usage:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-20">// -- Node readFile example ------------------------------------------
+
+const fs = require('fs');
+
+// readFile :: String -&gt; Task Error String
+const readFile = filename =&gt; new Task((reject, result) =&gt; {
+  fs.readFile(filename, (err, data) =&gt; (err ? reject(err) : result(data)));
+});
+
+readFile('metamorphosis').map(split('\n')).map(head);
+// Task('One morning, as Gregor Samsa was waking up from anxious dreams, he discovered that
+// in bed he had been changed into a monstrous verminous bug.')
+
+
+// -- jQuery getJSON example -----------------------------------------
+
+// getJSON :: String -&gt; {} -&gt; Task Error JSON
+const getJSON = curry((url, params) =&gt; new Task((reject, result) =&gt; {
+  $.getJSON(url, params, result).fail(reject);
+}));
+
+getJSON('/video', { id: 10 }).map(prop('title'));
+// Task('Family Matters ep 15')
+
+
+// -- Default Minimal Context ----------------------------------------
+
+// We can put normal, non futuristic values inside as well
+Task.of(3).map(three =&gt; three + 1);
+// Task(4)
+</textarea><button onclick="runSandbox('sandbox-20')">Run Code</button><div class="sandbox-output" id="output-sandbox-20">Output will appear here...</div></div>
+<p>The functions I'm calling <code>reject</code> and <code>result</code> are our error and success callbacks, respectively. As you can see, we simply <code>map</code> over the <code>Task</code> to work on the future value as if it was right there in our grasp. By now <code>map</code> should be old hat.</p>
+<p>If you're familiar with promises, you might recognize the function <code>map</code> as <code>then</code> with <code>Task</code> playing the role of our promise. Don't fret if you aren't familiar with promises, we won't be using them anyhow because they are not pure, but the analogy holds nonetheless.</p>
+<p>Like <code>IO</code>, <code>Task</code> will patiently wait for us to give it the green light before running. In fact, because it waits for our command, <code>IO</code> is effectively subsumed by <code>Task</code> for all things asynchronous; <code>readFile</code> and <code>getJSON</code> don't require an extra <code>IO</code> container to be pure. What's more, <code>Task</code> works in a similar fashion when we <code>map</code> over it: we're placing instructions for the future like a chore chart in a time capsule - an act of sophisticated technological procrastination.</p>
+<p>To run our <code>Task</code>, we must call the method <code>fork</code>. This works like <code>unsafePerformIO</code>, but as the name suggests, it will fork our process and evaluation continues on without blocking our thread. This can be implemented in numerous ways with threads and such, but here it acts as a normal async call would and the big wheel of the event loop keeps on turning. Let's look at <code>fork</code>:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-21">// -- Pure application -------------------------------------------------
+// blogPage :: Posts -&gt; HTML
+const blogPage = Handlebars.compile(blogTemplate);
+
+// renderPage :: Posts -&gt; HTML
+const renderPage = compose(blogPage, sortBy(prop('date')));
+
+// blog :: Params -&gt; Task Error HTML
+const blog = compose(map(renderPage), getJSON('/posts'));
+
+
+// -- Impure calling code ----------------------------------------------
+blog({}).fork(
+  error =&gt; $('#error').html(error.message),
+  page =&gt; $('#main').html(page),
+);
+
+$('#spinner').show();
+</textarea><button onclick="runSandbox('sandbox-21')">Run Code</button><div class="sandbox-output" id="output-sandbox-21">Output will appear here...</div></div>
+<p>Upon calling <code>fork</code>, the <code>Task</code> hurries off to find some posts and render the page. Meanwhile, we show a spinner since <code>fork</code> does not wait for a response. Finally, we will either display an error or render the page onto the screen depending if the <code>getJSON</code> call succeeded or not.</p>
+<p>Take a moment to consider how linear the control flow is here. We just read bottom to top, right to left even though the program will actually jump around a bit during execution. This makes reading and reasoning about our application simpler than having to bounce between callbacks and error handling blocks.</p>
+<p>Goodness, would you look at that, <code>Task</code> has also swallowed up <code>Either</code>! It must do so in order to handle futuristic failures since our normal control flow does not apply in the async world. This is all well and good as it provides sufficient and pure error handling out of the box.</p>
+<p>Even with <code>Task</code>, our <code>IO</code> and <code>Either</code> functors are not out of a job. Bear with me on a quick example that leans toward the more complex and hypothetical side, but is useful for illustrative purposes.</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-22">// Postgres.connect :: Url -&gt; IO DbConnection
+// runQuery :: DbConnection -&gt; ResultSet
+// readFile :: String -&gt; Task Error String
+
+// -- Pure application -------------------------------------------------
+
+// dbUrl :: Config -&gt; Either Error Url
+const dbUrl = ({ uname, pass, host, db }) =&gt; {
+  if (uname &amp;&amp; pass &amp;&amp; host &amp;&amp; db) {
+    return Either.of(`db:pg://${uname}:${pass}@${host}5432/${db}`);
+  }
+
+  return left(Error('Invalid config!'));
+};
+
+// connectDb :: Config -&gt; Either Error (IO DbConnection)
+const connectDb = compose(map(Postgres.connect), dbUrl);
+
+// getConfig :: Filename -&gt; Task Error (Either Error (IO DbConnection))
+const getConfig = compose(map(compose(connectDb, JSON.parse)), readFile);
+
+
+// -- Impure calling code ----------------------------------------------
+
+getConfig('db.json').fork(
+  logErr('couldn\'t read file'),
+  either(console.log, map(runQuery)),
+);
+</textarea><button onclick="runSandbox('sandbox-22')">Run Code</button><div class="sandbox-output" id="output-sandbox-22">Output will appear here...</div></div>
+<p>In this example, we still make use of <code>Either</code> and <code>IO</code> from within the success branch of <code>readFile</code>. <code>Task</code> takes care of the impurities of reading a file asynchronously, but we still deal with validating the config with <code>Either</code> and wrangling the db connection with <code>IO</code>. So you see, we're still in business for all things synchronous.</p>
+<p>I could go on, but that's all there is to it. Simple as <code>map</code>.</p>
+<p>In practice, you'll likely have multiple asynchronous tasks in one workflow and we haven't yet acquired the full container apis to tackle this scenario. Not to worry, we'll look at monads and such soon, but first, we must examine the maths that make this all possible.</p>
+<h2>A Spot of Theory</h2>
+<p>As mentioned before, functors come from category theory and satisfy a few laws. Let's first explore these useful properties.</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-23">// identity
+map(id) === id;
+
+// composition
+compose(map(f), map(g)) === map(compose(f, g));
+</textarea><button onclick="runSandbox('sandbox-23')">Run Code</button><div class="sandbox-output" id="output-sandbox-23">Output will appear here...</div></div>
+<p>The <em>identity</em> law is simple, but important. These laws are runnable bits of code so we can try them on our own functors to validate their legitimacy.</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-24">const idLaw1 = map(id);
+const idLaw2 = id;
+
+idLaw1(Container.of(2)); // Container(2)
+idLaw2(Container.of(2)); // Container(2)
+</textarea><button onclick="runSandbox('sandbox-24')">Run Code</button><div class="sandbox-output" id="output-sandbox-24">Output will appear here...</div></div>
+<p>You see, they are equal. Next let's look at composition.</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-25">const compLaw1 = compose(map(append(' world')), map(append(' cruel')));
+const compLaw2 = map(compose(append(' world'), append(' cruel')));
+
+compLaw1(Container.of('Goodbye')); // Container('Goodbye cruel world')
+compLaw2(Container.of('Goodbye')); // Container('Goodbye cruel world')
+</textarea><button onclick="runSandbox('sandbox-25')">Run Code</button><div class="sandbox-output" id="output-sandbox-25">Output will appear here...</div></div>
+<p>In category theory, functors take the objects and morphisms of a category and map them to a different category. By definition, this new category must have an identity and the ability to compose morphisms, but we needn't check because the aforementioned laws ensure these are preserved.</p>
+<p>Perhaps our definition of a category is still a bit fuzzy. You can think of a category as a network of objects with morphisms that connect them. So a functor would map the one category to the other without breaking the network. If an object <code>a</code> is in our source category <code>C</code>, when we map it to category <code>D</code> with functor <code>F</code>, we refer to that object as <code>F a</code> (If you put it together what does that spell?!). Perhaps, it's better to look at a diagram:</p>
+<p><img alt="Categories mapped" src="images/catmap.png"/></p>
+<p>For instance, <code>Maybe</code> maps our category of types and functions to a category where each object may not exist and each morphism has a <code>null</code> check. We accomplish this in code by surrounding each function with <code>map</code> and each type with our functor. We know that each of our normal types and functions will continue to compose in this new world. Technically, each functor in our code maps to a sub category of types and functions which makes all functors a particular brand called endofunctors, but for our purposes, we'll think of it as a different category.</p>
+<p>We can also visualize the mapping of a morphism and its corresponding objects with this diagram:</p>
+<p><img alt="functor diagram" src="images/functormap.png"/></p>
+<p>In addition to visualizing the mapped morphism from one category to another under the functor <code>F</code>, we see that the diagram commutes, which is to say, if you follow the arrows each route produces the same result. The different routes mean different behavior, but we always end at the same type. This formalism gives us principled ways to reason about our code - we can boldly apply formulas without having to parse and examine each individual scenario. Let's take a concrete example.</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-26">// topRoute :: String -&gt; Maybe String
+const topRoute = compose(Maybe.of, reverse);
+
+// bottomRoute :: String -&gt; Maybe String
+const bottomRoute = compose(map(reverse), Maybe.of);
+
+topRoute('hi'); // Just('ih')
+bottomRoute('hi'); // Just('ih')
+</textarea><button onclick="runSandbox('sandbox-26')">Run Code</button><div class="sandbox-output" id="output-sandbox-26">Output will appear here...</div></div>
+<p>Or visually:</p>
+<p><img alt="functor diagram 2" src="images/functormapmaybe.png"/></p>
+<p>We can instantly see and refactor code based on properties held by all functors.</p>
+<p>Functors can stack:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-27">const nested = Task.of([Either.of('pillows'), left('no sleep for you')]);
+
+map(map(map(toUpperCase)), nested);
+// Task([Right('PILLOWS'), Left('no sleep for you')])
+</textarea><button onclick="runSandbox('sandbox-27')">Run Code</button><div class="sandbox-output" id="output-sandbox-27">Output will appear here...</div></div>
+<p>What we have here with <code>nested</code> is a future array of elements that might be errors. We <code>map</code> to peel back each layer and run our function on the elements. We see no callbacks, if/else's, or for loops; just an explicit context. We do, however, have to <code>map(map(map(f)))</code>. We can instead compose functors. You heard me correctly:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-28">class Compose {
+  constructor(fgx) {
+    this.getCompose = fgx;
+  }
+
+  static of(fgx) {
+    return new Compose(fgx);
+  }
+
+  map(fn) {
+    return new Compose(map(map(fn), this.getCompose));
+  }
+}
+
+const tmd = Task.of(Maybe.of('Rock over London'));
+
+const ctmd = Compose.of(tmd);
+
+const ctmd2 = map(append(', rock on, Chicago'), ctmd);
+// Compose(Task(Just('Rock over London, rock on, Chicago')))
+
+ctmd2.getCompose;
+// Task(Just('Rock over London, rock on, Chicago'))
+</textarea><button onclick="runSandbox('sandbox-28')">Run Code</button><div class="sandbox-output" id="output-sandbox-28">Output will appear here...</div></div>
+<p>There, one <code>map</code>. Functor composition is associative and earlier, we defined <code>Container</code>, which is actually called the <code>Identity</code> functor. If we have identity and associative composition we have a category. This particular category has categories as objects and functors as morphisms, which is enough to make one's brain perspire. We won't delve too far into this, but it's nice to appreciate the architectural implications or even just the simple abstract beauty in the pattern.</p>
+<h2>In Summary</h2>
+<p>We've seen a few different functors, but there are infinitely many. Some notable omissions are iterable data structures like trees, lists, maps, pairs, you name it. Event streams and observables are both functors. Others can be for encapsulation or even just type modelling. Functors are all around us and we'll use them extensively throughout the book.</p>
+<p>What about calling a function with multiple functor arguments? How about working with an order sequence of impure or async actions? We haven't yet acquired the full tool set for working in this boxed up world. Next, we'll cut right to the chase and look at monads.</p>
+<p><a href="ch09.html">Chapter 09: Monadic Onions</a></p>
+<h2>Exercises</h2>
+<p>{% exercise %}<br/>
+Use <code>add</code> and <code>map</code> to make a function that increments a value inside a functor.  </p>
+<p>{% initial src="./exercises/ch08/exercise_a.js#L3;" %}  </p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-29">// incrF :: Functor f =&gt; f Int -&gt; f Int  
+const incrF = undefined;  
+</textarea><button onclick="runSandbox('sandbox-29')">Run Code</button><div class="sandbox-output" id="output-sandbox-29">Output will appear here...</div></div>
+<p>{% solution src="./exercises/ch08/solution_a.js" %}<br/>
+{% validation src="./exercises/ch08/validation_a.js" %}<br/>
+{% context src="./exercises/support.js" %}<br/>
+{% endexercise %}  </p>
+<hr/>
+<p>Given the following User object:  </p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-30">const user = { id: 2, name: 'Albert', active: true };  
+</textarea><button onclick="runSandbox('sandbox-30')">Run Code</button><div class="sandbox-output" id="output-sandbox-30">Output will appear here...</div></div>
+<p>{% exercise %}<br/>
+Use <code>safeProp</code> and <code>head</code> to find the first initial of the user.  </p>
+<p>{% initial src="./exercises/ch08/exercise_b.js#L7;" %}  </p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-31">// initial :: User -&gt; Maybe String  
+const initial = undefined;  
+</textarea><button onclick="runSandbox('sandbox-31')">Run Code</button><div class="sandbox-output" id="output-sandbox-31">Output will appear here...</div></div>
+<p>{% solution src="./exercises/ch08/solution_b.js" %}<br/>
+{% validation src="./exercises/ch08/validation_b.js" %}<br/>
+{% context src="./exercises/support.js" %}<br/>
+{% endexercise %}  </p>
+<hr/>
+<p>Given the following helper functions:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-32">// showWelcome :: User -&gt; String
+const showWelcome = compose(concat('Welcome '), prop('name'));
+
+// checkActive :: User -&gt; Either String User
+const checkActive = function checkActive(user) {
+  return user.active
+    ? Either.of(user)
+    : left('Your account is not active');
+};
+</textarea><button onclick="runSandbox('sandbox-32')">Run Code</button><div class="sandbox-output" id="output-sandbox-32">Output will appear here...</div></div>
+<p>{% exercise %}<br/>
+Write a function that uses <code>checkActive</code> and <code>showWelcome</code> to grant access or return the error.</p>
+<p>{% initial src="./exercises/ch08/exercise_c.js#L15;" %}  </p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-33">// eitherWelcome :: User -&gt; Either String String
+const eitherWelcome = undefined;
+</textarea><button onclick="runSandbox('sandbox-33')">Run Code</button><div class="sandbox-output" id="output-sandbox-33">Output will appear here...</div></div>
+<p>{% solution src="./exercises/ch08/solution_c.js" %}<br/>
+{% validation src="./exercises/ch08/validation_c.js" %}<br/>
+{% context src="./exercises/support.js" %}<br/>
+{% endexercise %}  </p>
+<hr/>
+<p>We now consider the following functions:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-34">// validateUser :: (User -&gt; Either String ()) -&gt; User -&gt; Either String User
+const validateUser = curry((validate, user) =&gt; validate(user).map(_ =&gt; user));
+
+// save :: User -&gt; IO User
+const save = user =&gt; new IO(() =&gt; ({ ...user, saved: true }));
+</textarea><button onclick="runSandbox('sandbox-34')">Run Code</button><div class="sandbox-output" id="output-sandbox-34">Output will appear here...</div></div>
+<p>{% exercise %}<br/>
+Write a function <code>validateName</code> which checks whether a user has a name longer than 3 characters
+or return an error message. Then use <code>either</code>, <code>showWelcome</code> and <code>save</code> to write a <code>register</code>
+function to signup and welcome a user when the validation is ok.</p>
+<p>Remember either's two arguments must return the same type.</p>
+<p>{% initial src="./exercises/ch08/exercise_d.js#L15;" %}  </p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-35">// validateName :: User -&gt; Either String ()
+const validateName = undefined;
+
+// register :: User -&gt; IO String
+const register = compose(undefined, validateUser(validateName));
+</textarea><button onclick="runSandbox('sandbox-35')">Run Code</button><div class="sandbox-output" id="output-sandbox-35">Output will appear here...</div></div>
+<p>{% solution src="./exercises/ch08/solution_d.js" %}<br/>
+{% validation src="./exercises/ch08/validation_d.js" %}<br/>
+{% context src="./exercises/support.js" %}<br/>
+{% endexercise %}  </p>
+<script>
+function runSandbox(id) {
+    const code = document.getElementById('code-' + id).value;
+    const output = document.getElementById('output-' + id);
+    output.innerHTML = '';
+    
+    const originalLog = console.log;
+    console.log = function(...args) {
+        args.forEach(arg => {
+            output.innerHTML += '<div>' + arg + '</div>';
+        });
+        originalLog.apply(console, args);
+    };
+
+    try {
+        eval(code);
+    } catch (e) {
+        output.innerHTML += '<div style="color: red;">Error: ' + e.message + '</div>';
+    } finally {
+        console.log = originalLog;
+    }
+}
+</script>
+<style>
+.sandbox { border: 1px solid #ccc; padding: 10px; margin: 10px 0; border-radius: 5px; background-color: #f9f9f9; }
+.sandbox textarea { width: 100%; height: 100px; font-family: monospace; margin-bottom: 5px; padding: 5px; box-sizing: border-box; }
+.sandbox button { padding: 5px 10px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 3px; }
+.sandbox button:hover { background-color: #0056b3; }
+.sandbox-output { background: #fff; padding: 10px; margin-top: 5px; border: 1px solid #ddd; min-height: 40px; font-family: monospace; }
+</style>

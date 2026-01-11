@@ -1,0 +1,263 @@
+<h1>Chapter 12: Traversing the Stone</h1>
+<p>So far, in our cirque du conteneur, you've seen us tame the ferocious <a href="ch08.md#my-first-functor">functor</a>, bending it to our will to perform any operation that strikes our fancy. You've been dazzled by the juggling of many dangerous effects at once using function <a href="ch10.html">application</a> to collect the results. Sat there in amazement as containers vanished in thin air by <a href="ch09.html">joining</a> them together. At the side effect sideshow, we've seen them <a href="ch08.md#a-spot-of-theory">composed</a> into one. And most recently, we've ventured beyond what's natural and <a href="ch11.html">transformed</a> one type into another before your very eyes.</p>
+<p>And now for our next trick, we'll look at traversals. We'll watch types soar over one another as if they were trapeze artists holding our value intact. We'll reorder effects like the trolleys in a tilt-a-whirl. When our containers get intertwined like the limbs of a contortionist, we can use this interface to straighten things out. We'll witness different effects with different orderings. Fetch me my pantaloons and slide whistle, let's get started.</p>
+<h2>Types n' Types</h2>
+<p>Let's get weird:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-0">// readFile :: FileName -&gt; Task Error String
+
+// firstWords :: String -&gt; String
+const firstWords = compose(intercalate(' '), take(3), split(' '));
+
+// tldr :: FileName -&gt; Task Error String
+const tldr = compose(map(firstWords), readFile);
+
+map(tldr, ['file1', 'file2']);
+// [Task('hail the monarchy'), Task('smash the patriarchy')]
+</textarea><button onclick="runSandbox('sandbox-0')">Run Code</button><div class="sandbox-output" id="output-sandbox-0">Output will appear here...</div></div>
+<p>Here we read a bunch of files and end up with a useless array of tasks. How might we fork each one of these? It would be most agreeable if we could switch the types around to have <code>Task Error [String]</code> instead of <code>[Task Error String]</code>. That way, we'd have one future value holding all the results, which is much more amenable to our async needs than several future values arriving at their leisure.</p>
+<p>Here's one last example of a sticky situation:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-1">// getAttribute :: String -&gt; Node -&gt; Maybe String
+// $ :: Selector -&gt; IO Node
+
+// getControlNode :: Selector -&gt; IO (Maybe (IO Node))
+const getControlNode = compose(map(map($)), map(getAttribute('aria-controls')), $);
+</textarea><button onclick="runSandbox('sandbox-1')">Run Code</button><div class="sandbox-output" id="output-sandbox-1">Output will appear here...</div></div>
+<p>Look at those <code>IO</code>s longing to be together. It'd be just lovely to <code>join</code> them, let them dance cheek to cheek, but alas a <code>Maybe</code> stands between them like a chaperone at prom. Our best move here would be to shift their positions next to one another, that way each type can be together at last and our signature can be simplified to <code>IO (Maybe Node)</code>.</p>
+<h2>Type Feng Shui</h2>
+<p>The <em>Traversable</em> interface consists of two glorious functions: <code>sequence</code> and <code>traverse</code>.</p>
+<p>Let's rearrange our types using <code>sequence</code>:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-2">sequence(List.of, Maybe.of(['the facts'])); // [Just('the facts')]
+sequence(Task.of, new Map({ a: Task.of(1), b: Task.of(2) })); // Task(Map({ a: 1, b: 2 }))
+sequence(IO.of, Either.of(IO.of('buckle my shoe'))); // IO(Right('buckle my shoe'))
+sequence(Either.of, [Either.of('wing')]); // Right(['wing'])
+sequence(Task.of, left('wing')); // Task(Left('wing'))
+</textarea><button onclick="runSandbox('sandbox-2')">Run Code</button><div class="sandbox-output" id="output-sandbox-2">Output will appear here...</div></div>
+<p>See what has happened here? Our nested type gets turned inside out like a pair of leather trousers on a humid summer night. The inner functor is shifted to the outside and vice versa. It should be known that <code>sequence</code> is bit particular about its arguments. It looks like this:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-3">// sequence :: (Traversable t, Applicative f) =&gt; (a -&gt; f a) -&gt; t (f a) -&gt; f (t a)
+const sequence = curry((of, x) =&gt; x.sequence(of));
+</textarea><button onclick="runSandbox('sandbox-3')">Run Code</button><div class="sandbox-output" id="output-sandbox-3">Output will appear here...</div></div>
+<p>Let's start with the second argument. It must be a <em>Traversable</em> holding an <em>Applicative</em>, which sounds quite restrictive, but just so happens to be the case more often than not. It is the <code>t (f a)</code> which gets turned into a <code>f (t a)</code>. Isn't that expressive? It's clear as day the two types do-si-do around each other. That first argument there is merely a crutch and only necessary in an untyped language. It is a type constructor (our <em>of</em>) provided so that we can invert map-reluctant types like <code>Left</code> - more on that in a minute.</p>
+<p>Using <code>sequence</code>, we can shift types around with the precision of a sidewalk thimblerigger. But how does it work? Let's look at how a type, say <code>Either</code>, would implement it:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-4">class Right extends Either {
+  // ...
+  sequence(of) {
+    return this.$value.map(Either.of);
+  }
+}
+</textarea><button onclick="runSandbox('sandbox-4')">Run Code</button><div class="sandbox-output" id="output-sandbox-4">Output will appear here...</div></div>
+<p>Ah yes, if our <code>$value</code> is a functor (it must be an applicative, in fact), we can simply <code>map</code> our constructor to leap frog the type.</p>
+<p>You may have noticed that we've ignored the <code>of</code> entirely. It is passed in for the occasion where mapping is futile, as is the case with <code>Left</code>:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-5">class Left extends Either {
+  // ...
+  sequence(of) {
+    return of(this);
+  }
+}
+</textarea><button onclick="runSandbox('sandbox-5')">Run Code</button><div class="sandbox-output" id="output-sandbox-5">Output will appear here...</div></div>
+<p>We'd like the types to always end up in the same arrangement, therefore it is necessary for types like <code>Left</code> who don't actually hold our inner applicative to get a little help in doing so. The <em>Applicative</em> interface requires that we first have a <em>Pointed Functor</em> so we'll always have a <code>of</code> to pass in. In a language with a type system, the outer type can be inferred from the signature and does not need to be explicitly given.</p>
+<h2>Effect Assortment</h2>
+<p>Different orders have different outcomes where our containers are concerned. If I have <code>[Maybe a]</code>, that's a collection of possible values whereas if I have a <code>Maybe [a]</code>, that's a possible collection of values. The former indicates we'll be forgiving and keep "the good ones", while the latter means it's an "all or nothing" type of situation. Likewise, <code>Either Error (Task Error a)</code> could represent a client side validation and <code>Task Error (Either Error a)</code> could be a server side one. Types can be swapped to give us different effects.</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-6">// fromPredicate :: (a -&gt; Bool) -&gt; a -&gt; Either e a
+
+// partition :: (a -&gt; Bool) -&gt; [a] -&gt; [Either e a]
+const partition = f =&gt; map(fromPredicate(f));
+
+// validate :: (a -&gt; Bool) -&gt; [a] -&gt; Either e [a]
+const validate = f =&gt; traverse(Either.of, fromPredicate(f));
+</textarea><button onclick="runSandbox('sandbox-6')">Run Code</button><div class="sandbox-output" id="output-sandbox-6">Output will appear here...</div></div>
+<p>Here we have two different functions based on if we <code>map</code> or <code>traverse</code>.  The first, <code>partition</code> will give us an array of <code>Left</code>s and <code>Right</code>s according to the predicate function. This is useful to keep precious data around for future use rather than filtering it out with the bathwater. <code>validate</code> instead will give us the first item that fails the predicate in <code>Left</code>, or all the items in <code>Right</code> if everything is hunky dory. By choosing a different type order, we get different behavior.</p>
+<p>Let's look at the <code>traverse</code> function of <code>List</code>, to see how the <code>validate</code> method is made. </p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-7">traverse(of, fn) {
+    return this.$value.reduce(
+      (f, a) =&gt; fn(a).map(b =&gt; bs =&gt; bs.concat(b)).ap(f),
+      of(new List([])),
+    );
+  }
+</textarea><button onclick="runSandbox('sandbox-7')">Run Code</button><div class="sandbox-output" id="output-sandbox-7">Output will appear here...</div></div>
+<p>This just runs a <code>reduce</code> on the list. The reduce function is <code>(f, a) =&gt; fn(a).map(b =&gt; bs =&gt; bs.concat(b)).ap(f)</code>, which looks a bit scary, so let's step through it.</p>
+<ol>
+<li><code>reduce(..., ...)</code></li>
+</ol>
+<p>Remember the signature of <code>reduce :: [a] -&gt; (f -&gt; a -&gt; f) -&gt; f -&gt; f</code>. The first argument is actually provided by the dot-notation on <code>$value</code>, so it's a list of things. 
+   Then we need a function from a <code>f</code> (the accumulator) and a <code>a</code> (the iteree) to return us a new accumulator. </p>
+<ol>
+<li><code>of(new List([]))</code></li>
+</ol>
+<p>The seed value is <code>of(new List([]))</code>, which in our case is <code>Right([]) :: Either e [a]</code>. Notice that <code>Either e [a]</code> will also be our final resulting type!</p>
+<ol>
+<li><code>fn :: Applicative f =&gt; a -&gt; f a</code></li>
+</ol>
+<p>If we apply it to our example above, <code>fn</code> is actually <code>fromPredicate(f) :: a -&gt; Either e a</code>.  </p>
+<blockquote>
+<p>fn(a) :: Either e a</p>
+</blockquote>
+<ol>
+<li><code>.map(b =&gt; bs =&gt; bs.concat(b))</code></li>
+</ol>
+<p>When <code>Right</code>, <code>Either.map</code> passes the right value to the function and returns a new <code>Right</code> with the result. In this case the function has one parameter (<code>b</code>), and returns another function (<code>bs =&gt; bs.concat(b)</code>, where <code>b</code> is in scope due to the closure). When <code>Left</code>, the left value is returned.  </p>
+<blockquote>
+<p>fn(a).map(b =&gt; bs =&gt; bs.concat(b)) :: Either e ([a] -&gt; [a])</p>
+</blockquote>
+<ol>
+<li>.<code>ap(f)</code></li>
+</ol>
+<p>Remember that <code>f</code> is an Applicative here, so we can apply the function <code>bs =&gt; bs.concat(b)</code> to whatever value <code>bs :: [a]</code> is in <code>f</code>. Fortunately for us, <code>f</code> comes from our initial seed and has the following type: <code>f :: Either e [a]</code> which is by the way, preserved when we apply <code>bs =&gt; bs.concat(b)</code>. 
+   When <code>f</code> is <code>Right</code>, this calls <code>bs =&gt; bs.concat(b)</code>, which returns a <code>Right</code> with the item added to the list. When <code>Left</code>, the left value (from the previous step or previous iteration respectively) is returned. </p>
+<blockquote>
+<p>fn(a).map(b =&gt; bs =&gt; bs.concat(b)).ap(f) :: Either e [a]</p>
+</blockquote>
+<p>This apparently miraculous transformation is achieved with just 6 measly lines of code in <code>List.traverse</code>, and is accomplished with <code>of</code>, <code>map</code> and <code>ap</code>, so will work for any Applicative Functor. This is a great example 
+of how those abstraction can help to write highly generic code with only a few assumptions (that can, incidentally, be declared and checked at the type level!).</p>
+<h2>Waltz of the Types</h2>
+<p>Time to revisit and clean our initial examples.</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-8">// readFile :: FileName -&gt; Task Error String
+
+// firstWords :: String -&gt; String
+const firstWords = compose(intercalate(' '), take(3), split(' '));
+
+// tldr :: FileName -&gt; Task Error String
+const tldr = compose(map(firstWords), readFile);
+
+traverse(Task.of, tldr, ['file1', 'file2']);
+// Task(['hail the monarchy', 'smash the patriarchy']);
+</textarea><button onclick="runSandbox('sandbox-8')">Run Code</button><div class="sandbox-output" id="output-sandbox-8">Output will appear here...</div></div>
+<p>Using <code>traverse</code> instead of <code>map</code>, we've successfully herded those unruly <code>Task</code>s into a nice coordinated array of results. This is like <code>Promise.all()</code>, if you're familiar, except it isn't just a one-off, custom function, no, this works for any <em>traversable</em> type. These mathematical apis tend to capture most things we'd like to do in an interoperable, reusable way, rather than each library reinventing these functions for a single type.</p>
+<p>Let's clean up the last example for closure (no, not that kind):</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-9">// getAttribute :: String -&gt; Node -&gt; Maybe String
+// $ :: Selector -&gt; IO Node
+
+// getControlNode :: Selector -&gt; IO (Maybe Node)
+const getControlNode = compose(chain(traverse(IO.of, $)), map(getAttribute('aria-controls')), $);
+</textarea><button onclick="runSandbox('sandbox-9')">Run Code</button><div class="sandbox-output" id="output-sandbox-9">Output will appear here...</div></div>
+<p>Instead of <code>map(map($))</code> we have <code>chain(traverse(IO.of, $))</code> which inverts our types as it maps then flattens the two <code>IO</code>s via <code>chain</code>.</p>
+<h2>No Law and Order</h2>
+<p>Well now, before you get all judgemental and bang the backspace button like a gavel to retreat from the chapter, take a moment to recognize that these laws are useful code guarantees. 'Tis my conjecture that the goal of most program architecture is an attempt to place useful restrictions on our code to narrow the possibilities, to guide us into the answers as designers and readers.</p>
+<p>An interface without laws is merely indirection. Like any other mathematical structure, we must expose properties for our own sanity. This has a similar effect as encapsulation since it protects the data, enabling us to swap out the interface with another law abiding citizen.</p>
+<p>Come along now, we've got some laws to suss out.</p>
+<h3>Identity</h3>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-10">const identity1 = compose(sequence(Identity.of), map(Identity.of));
+const identity2 = Identity.of;
+
+// test it out with Right
+identity1(Either.of('stuff'));
+// Identity(Right('stuff'))
+
+identity2(Either.of('stuff'));
+// Identity(Right('stuff'))
+</textarea><button onclick="runSandbox('sandbox-10')">Run Code</button><div class="sandbox-output" id="output-sandbox-10">Output will appear here...</div></div>
+<p>This should be straightforward. If we place an <code>Identity</code> in our functor, then turn it inside out with <code>sequence</code> that's the same as just placing it on the outside to begin with. We chose <code>Right</code> as our guinea pig as it is easy to try the law and inspect. An arbitrary functor there is normal, however, the use of a concrete functor here, namely <code>Identity</code> in the law itself might raise some eyebrows. Remember a <a href="ch05.md#category-theory">category</a> is defined by morphisms between its objects that have associative composition and identity. When dealing with the category of functors, natural transformations are the morphisms and <code>Identity</code> is, well identity. The <code>Identity</code> functor is as fundamental in demonstrating laws as our <code>compose</code> function. In fact, we should give up the ghost and follow suit with our <a href="ch08.md#a-spot-of-theory">Compose</a> type:</p>
+<h3>Composition</h3>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-11">const comp1 = compose(sequence(Compose.of), map(Compose.of));
+const comp2 = (Fof, Gof) =&gt; compose(Compose.of, map(sequence(Gof)), sequence(Fof));
+
+
+// Test it out with some types we have lying around
+comp1(Identity(Right([true])));
+// Compose(Right([Identity(true)]))
+
+comp2(Either.of, Array)(Identity(Right([true])));
+// Compose(Right([Identity(true)]))
+</textarea><button onclick="runSandbox('sandbox-11')">Run Code</button><div class="sandbox-output" id="output-sandbox-11">Output will appear here...</div></div>
+<p>This law preserves composition as one would expect: if we swap compositions of functors, we shouldn't see any surprises since the composition is a functor itself. We arbitrarily chose <code>true</code>, <code>Right</code>, <code>Identity</code>, and <code>Array</code> to test it out. Libraries like <a href="https://hackage.haskell.org/package/QuickCheck">quickcheck</a> or <a href="http://jsverify.github.io/">jsverify</a> can help us test the law by fuzz testing the inputs.</p>
+<p>As a natural consequence of the above law, we get the ability to <a href="https://www.cs.ox.ac.uk/jeremy.gibbons/publications/iterator.pdf">fuse traversals</a>, which is nice from a performance standpoint.</p>
+<h3>Naturality</h3>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-12">const natLaw1 = (of, nt) =&gt; compose(nt, sequence(of));
+const natLaw2 = (of, nt) =&gt; compose(sequence(of), map(nt));
+
+// test with a random natural transformation and our friendly Identity/Right functors.
+
+// maybeToEither :: Maybe a -&gt; Either () a
+const maybeToEither = x =&gt; (x.$value ? new Right(x.$value) : new Left());
+
+natLaw1(Maybe.of, maybeToEither)(Identity.of(Maybe.of('barlow one')));
+// Right(Identity('barlow one'))
+
+natLaw2(Either.of, maybeToEither)(Identity.of(Maybe.of('barlow one')));
+// Right(Identity('barlow one'))
+</textarea><button onclick="runSandbox('sandbox-12')">Run Code</button><div class="sandbox-output" id="output-sandbox-12">Output will appear here...</div></div>
+<p>This is similar to our identity law. If we first swing the types around then run a natural transformation on the outside, that should equal mapping a natural transformation, then flipping the types.</p>
+<p>A natural consequence of this law is:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-13">traverse(A.of, A.of) === A.of;
+</textarea><button onclick="runSandbox('sandbox-13')">Run Code</button><div class="sandbox-output" id="output-sandbox-13">Output will appear here...</div></div>
+<p>Which, again, is nice from a performance standpoint.</p>
+<h2>In Summary</h2>
+<p><em>Traversable</em> is a powerful interface that gives us the ability to rearrange our types with the ease of a telekinetic interior decorator. We can achieve different effects with different orders as well as iron out those nasty type wrinkles that keep us from <code>join</code>ing them down. Next, we'll take a bit of a detour to see one of the most powerful interfaces of functional programming and perhaps even algebra itself: <a href="ch13.html">Monoids bring it all together</a></p>
+<h2>Exercises</h2>
+<p>Considering the following elements:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-14">// httpGet :: Route -&gt; Task Error JSON
+
+// routes :: Map Route Route
+const routes = new Map({ '/': '/', '/about': '/about' });
+</textarea><button onclick="runSandbox('sandbox-14')">Run Code</button><div class="sandbox-output" id="output-sandbox-14">Output will appear here...</div></div>
+<p>{% exercise %}<br/>
+Use the traversable interface to change the type signature of <code>getJsons</code> to
+Map Route Route → Task Error (Map Route JSON)</p>
+<p>{% initial src="./exercises/ch12/exercise_a.js#L11;" %}  </p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-15">// getJsons :: Map Route Route -&gt; Map Route (Task Error JSON)
+const getJsons = map(httpGet);
+</textarea><button onclick="runSandbox('sandbox-15')">Run Code</button><div class="sandbox-output" id="output-sandbox-15">Output will appear here...</div></div>
+<p>{% solution src="./exercises/ch12/solution_a.js" %}<br/>
+{% validation src="./exercises/ch12/validation_a.js" %}<br/>
+{% context src="./exercises/support.js" %}<br/>
+{% endexercise %}  </p>
+<hr/>
+<p>We now define the following validation function:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-16">// validate :: Player -&gt; Either String Player
+const validate = player =&gt; (player.name ? Either.of(player) : left('must have name'));
+</textarea><button onclick="runSandbox('sandbox-16')">Run Code</button><div class="sandbox-output" id="output-sandbox-16">Output will appear here...</div></div>
+<p>{% exercise %}<br/>
+Using traversable, and the <code>validate</code> function, update <code>startGame</code> (and its signature)
+to only start the game if all players are valid</p>
+<p>{% initial src="./exercises/ch12/exercise_b.js#L7;" %}  </p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-17">// startGame :: [Player] -&gt; [Either Error String]
+const startGame = compose(map(map(always('game started!'))), map(validate));
+</textarea><button onclick="runSandbox('sandbox-17')">Run Code</button><div class="sandbox-output" id="output-sandbox-17">Output will appear here...</div></div>
+<p>{% solution src="./exercises/ch12/solution_b.js" %}<br/>
+{% validation src="./exercises/ch12/validation_b.js" %}<br/>
+{% context src="./exercises/support.js" %}<br/>
+{% endexercise %}  </p>
+<hr/>
+<p>Finally, we consider some file-system helpers:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-18">// readfile :: String -&gt; String -&gt; Task Error String
+// readdir :: String -&gt; Task Error [String]
+</textarea><button onclick="runSandbox('sandbox-18')">Run Code</button><div class="sandbox-output" id="output-sandbox-18">Output will appear here...</div></div>
+<p>{% exercise %}<br/>
+Use traversable to rearrange and flatten the nested Tasks &amp; Maybe</p>
+<p>{% initial src="./exercises/ch12/exercise_c.js#L8;" %}  </p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-19">// readFirst :: String -&gt; Task Error (Maybe (Task Error String))
+const readFirst = compose(map(map(readfile('utf-8'))), map(safeHead), readdir);
+</textarea><button onclick="runSandbox('sandbox-19')">Run Code</button><div class="sandbox-output" id="output-sandbox-19">Output will appear here...</div></div>
+<p>{% solution src="./exercises/ch12/solution_c.js" %}<br/>
+{% validation src="./exercises/ch12/validation_c.js" %}<br/>
+{% context src="./exercises/support.js" %}<br/>
+{% endexercise %}  </p>
+<script>
+function runSandbox(id) {
+    const code = document.getElementById('code-' + id).value;
+    const output = document.getElementById('output-' + id);
+    output.innerHTML = '';
+    
+    const originalLog = console.log;
+    console.log = function(...args) {
+        args.forEach(arg => {
+            output.innerHTML += '<div>' + arg + '</div>';
+        });
+        originalLog.apply(console, args);
+    };
+
+    try {
+        eval(code);
+    } catch (e) {
+        output.innerHTML += '<div style="color: red;">Error: ' + e.message + '</div>';
+    } finally {
+        console.log = originalLog;
+    }
+}
+</script>
+<style>
+.sandbox { border: 1px solid #ccc; padding: 10px; margin: 10px 0; border-radius: 5px; background-color: #f9f9f9; }
+.sandbox textarea { width: 100%; height: 100px; font-family: monospace; margin-bottom: 5px; padding: 5px; box-sizing: border-box; }
+.sandbox button { padding: 5px 10px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 3px; }
+.sandbox button:hover { background-color: #0056b3; }
+.sandbox-output { background: #fff; padding: 10px; margin-top: 5px; border: 1px solid #ddd; min-height: 40px; font-family: monospace; }
+</style>

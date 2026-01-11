@@ -1,0 +1,267 @@
+<h1>Chapter 05: Coding by Composing</h1>
+<h2>Functional Husbandry</h2>
+<p>Here's <code>compose</code>:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-0">const compose = (...fns) =&gt; (...args) =&gt; fns.reduceRight((res, fn) =&gt; [fn.call(null, ...res)], args)[0];
+</textarea><button onclick="runSandbox('sandbox-0')">Run Code</button><div class="sandbox-output" id="output-sandbox-0">Output will appear here...</div></div>
+<p>... Don't be scared! This is the level-9000-super-Saiyan-form of <em>compose</em>. For the sake of reasoning, let's drop the variadic implementation and consider a simpler form that can compose two functions together. Once you get your head around that, you can push the abstraction further and consider it simply works for any number of functions (we could even prove that)!
+Here's a more friendly <em>compose</em> for you my dear readers:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-1">const compose2 = (f, g) =&gt; x =&gt; f(g(x));
+</textarea><button onclick="runSandbox('sandbox-1')">Run Code</button><div class="sandbox-output" id="output-sandbox-1">Output will appear here...</div></div>
+<p><code>f</code> and <code>g</code> are functions and <code>x</code> is the value being "piped" through them.</p>
+<p>Composition feels like function husbandry. You, breeder of functions, select two with traits you'd like to combine and mash them together to spawn a brand new one. Usage is as follows:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-2">const toUpperCase = x =&gt; x.toUpperCase();
+const exclaim = x =&gt; `${x}!`;
+const shout = compose(exclaim, toUpperCase);
+
+shout('send in the clowns'); // "SEND IN THE CLOWNS!"
+</textarea><button onclick="runSandbox('sandbox-2')">Run Code</button><div class="sandbox-output" id="output-sandbox-2">Output will appear here...</div></div>
+<p>The composition of two functions returns a new function. This makes perfect sense: composing two units of some type (in this case function) should yield a new unit of that very type. You don't plug two legos together and get a lincoln log. There is a theory here, some underlying law that we will discover in due time.</p>
+<p>In our definition of <code>compose</code>, the <code>g</code> will run before the <code>f</code>, creating a right to left flow of data. This is much more readable than nesting a bunch of function calls. Without compose, the above would read:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-3">const shout = x =&gt; exclaim(toUpperCase(x));
+</textarea><button onclick="runSandbox('sandbox-3')">Run Code</button><div class="sandbox-output" id="output-sandbox-3">Output will appear here...</div></div>
+<p>Instead of inside to outside, we run right to left, which I suppose is a step in the left direction (boo!). Let's look at an example where sequence matters:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-4">const head = x =&gt; x[0];
+const reverse = reduce((acc, x) =&gt; [x, ...acc], []);
+const last = compose(head, reverse);
+
+last(['jumpkick', 'roundhouse', 'uppercut']); // 'uppercut'
+</textarea><button onclick="runSandbox('sandbox-4')">Run Code</button><div class="sandbox-output" id="output-sandbox-4">Output will appear here...</div></div>
+<p><code>reverse</code> will turn the list around while <code>head</code> grabs the initial item. This results in an effective, albeit inefficient, <code>last</code> function. The sequence of functions in the composition should be apparent here. We could define a left to right version, however, we mirror the mathematical version much more closely as it stands. That's right, composition is straight from the math books. In fact, perhaps it's time to look at a property that holds for any composition.</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-5">// associativity
+compose(f, compose(g, h)) === compose(compose(f, g), h);
+</textarea><button onclick="runSandbox('sandbox-5')">Run Code</button><div class="sandbox-output" id="output-sandbox-5">Output will appear here...</div></div>
+<p>Composition is associative, meaning it doesn't matter how you group two of them. So, should we choose to uppercase the string, we can write:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-6">compose(toUpperCase, compose(head, reverse));
+// or
+compose(compose(toUpperCase, head), reverse);
+</textarea><button onclick="runSandbox('sandbox-6')">Run Code</button><div class="sandbox-output" id="output-sandbox-6">Output will appear here...</div></div>
+<p>Since it doesn't matter how we group our calls to <code>compose</code>, the result will be the same. That allows us to write a variadic compose and use it as follows:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-7">// previously we'd have to write two composes, but since it's associative, 
+// we can give compose as many fn's as we like and let it decide how to group them.
+const arg = ['jumpkick', 'roundhouse', 'uppercut'];
+const lastUpper = compose(toUpperCase, head, reverse);
+const loudLastUpper = compose(exclaim, toUpperCase, head, reverse);
+
+lastUpper(arg); // 'UPPERCUT'
+loudLastUpper(arg); // 'UPPERCUT!'
+</textarea><button onclick="runSandbox('sandbox-7')">Run Code</button><div class="sandbox-output" id="output-sandbox-7">Output will appear here...</div></div>
+<p>Applying the associative property gives us this flexibility and peace of mind that the result will be equivalent. The slightly more complicated variadic definition is included with the support libraries for this book and is the normal definition you'll find in libraries like <a href="https://lodash.com/">lodash</a>, <a href="https://underscorejs.org/">underscore</a>, and <a href="https://ramdajs.com/">ramda</a>.</p>
+<p>One pleasant benefit of associativity is that any group of functions can be extracted and bundled together in their very own composition. Let's play with refactoring our previous example:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-8">const loudLastUpper = compose(exclaim, toUpperCase, head, reverse);
+
+// -- or ---------------------------------------------------------------
+
+const last = compose(head, reverse);
+const loudLastUpper = compose(exclaim, toUpperCase, last);
+
+// -- or ---------------------------------------------------------------
+
+const last = compose(head, reverse);
+const angry = compose(exclaim, toUpperCase);
+const loudLastUpper = compose(angry, last);
+
+// more variations...
+</textarea><button onclick="runSandbox('sandbox-8')">Run Code</button><div class="sandbox-output" id="output-sandbox-8">Output will appear here...</div></div>
+<p>There's no right or wrong answers - we're just plugging our legos together in whatever way we please. Usually it's best to group things in a reusable way like <code>last</code> and <code>angry</code>. If familiar with Fowler's "<a href="https://martinfowler.com/books/refactoring.html">Refactoring</a>", one might recognize this process as "<a href="https://refactoring.com/catalog/extractFunction.html">extract function</a>"...except without all the object state to worry about.</p>
+<h2>Pointfree</h2>
+<p>Pointfree style means never having to say your data. Excuse me. It means functions that never mention the data upon which they operate. First class functions, currying, and composition all play well together to create this style.</p>
+<blockquote>
+<p>Hint: Pointfree versions of <code>replace</code> &amp; <code>toLowerCase</code> are defined in the <a href="./appendix_c.html">Appendix C -
+Pointfree Utilities</a>. Do not hesitate to have a peek!</p>
+</blockquote>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-9">// not pointfree because we mention the data: word
+const snakeCase = word =&gt; word.toLowerCase().replace(/\s+/ig, '_');
+
+// pointfree
+const snakeCase = compose(replace(/\s+/ig, '_'), toLowerCase);
+</textarea><button onclick="runSandbox('sandbox-9')">Run Code</button><div class="sandbox-output" id="output-sandbox-9">Output will appear here...</div></div>
+<p>See how we partially applied <code>replace</code>? What we're doing is piping our data through each function of 1 argument. Currying allows us to prepare each function to just take its data, operate on it, and pass it along. Something else to notice is how we don't need the data to construct our function in the pointfree version, whereas in the pointful one, we must have our <code>word</code> available before anything else.</p>
+<p>Let's look at another example.</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-10">// not pointfree because we mention the data: name
+const initials = name =&gt; name.split(' ').map(compose(toUpperCase, head)).join('. ');
+
+// pointfree
+// NOTE: we use 'intercalate' from the appendix instead of 'join' introduced in Chapter 09!
+const initials = compose(intercalate('. '), map(compose(toUpperCase, head)), split(' '));
+
+initials('hunter stockton thompson'); // 'H. S. T'
+</textarea><button onclick="runSandbox('sandbox-10')">Run Code</button><div class="sandbox-output" id="output-sandbox-10">Output will appear here...</div></div>
+<p>Pointfree code can again, help us remove needless names and keep us concise and generic. Pointfree is a good litmus test for functional code as it lets us know we've got small functions that take input to output. One can't compose a while loop, for instance. Be warned, however, pointfree is a double-edged sword and can sometimes obfuscate intention. Not all functional code is pointfree and that is O.K. We'll shoot for it where we can and stick with normal functions otherwise.</p>
+<h2>Debugging</h2>
+<p>A common mistake is to compose something like <code>map</code>, a function of two arguments, without first partially applying it.</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-11">// wrong - we end up giving angry an array and we partially applied map with who knows what.
+const latin = compose(map, angry, reverse);
+
+latin(['frog', 'eyes']); // error
+
+// right - each function expects 1 argument.
+const latin = compose(map(angry), reverse);
+
+latin(['frog', 'eyes']); // ['EYES!', 'FROG!'])
+</textarea><button onclick="runSandbox('sandbox-11')">Run Code</button><div class="sandbox-output" id="output-sandbox-11">Output will appear here...</div></div>
+<p>If you are having trouble debugging a composition, we can use this helpful, but impure trace function to see what's going on.</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-12">const trace = curry((tag, x) =&gt; {
+  console.log(tag, x);
+  return x;
+});
+
+const dasherize = compose(
+  intercalate('-'),
+  toLower,
+  split(' '),
+  replace(/\s{2,}/ig, ' '),
+);
+
+dasherize('The world is a vampire');
+// TypeError: Cannot read property 'apply' of undefined
+</textarea><button onclick="runSandbox('sandbox-12')">Run Code</button><div class="sandbox-output" id="output-sandbox-12">Output will appear here...</div></div>
+<p>Something is wrong here, let's <code>trace</code></p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-13">const dasherize = compose(
+  intercalate('-'),
+  toLower,
+  trace('after split'),
+  split(' '),
+  replace(/\s{2,}/ig, ' '),
+);
+
+dasherize('The world is a vampire');
+// after split [ 'The', 'world', 'is', 'a', 'vampire' ]
+</textarea><button onclick="runSandbox('sandbox-13')">Run Code</button><div class="sandbox-output" id="output-sandbox-13">Output will appear here...</div></div>
+<p>Ah! We need to <code>map</code> this <code>toLower</code> since it's working on an array.</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-14">const dasherize = compose(
+  intercalate('-'),
+  map(toLower),
+  split(' '),
+  replace(/\s{2,}/ig, ' '),
+);
+
+dasherize('The world is a vampire'); // 'the-world-is-a-vampire'
+</textarea><button onclick="runSandbox('sandbox-14')">Run Code</button><div class="sandbox-output" id="output-sandbox-14">Output will appear here...</div></div>
+<p>The <code>trace</code> function allows us to view the data at a certain point for debugging purposes. Languages like Haskell and PureScript have similar functions for ease of development.</p>
+<p>Composition will be our tool for constructing programs and, as luck would have it, is backed by a powerful theory that ensures things will work out for us. Let's examine this theory.</p>
+<h2>Category Theory</h2>
+<p>Category theory is an abstract branch of mathematics that can formalize concepts from several different branches such as set theory, type theory, group theory, logic, and more. It primarily deals with objects, morphisms, and transformations, which mirrors programming quite closely. Here is a chart of the same concepts as viewed from each separate theory.</p>
+<p><img alt="category theory" src="images/cat_theory.png"/></p>
+<p>Sorry, I didn't mean to frighten you. I don't expect you to be intimately familiar with all these concepts. My point is to show you how much duplication we have so you can see why category theory aims to unify these things.</p>
+<p>In category theory, we have something called... a category. It is defined as a collection with the following components:</p>
+<ul>
+<li>A collection of objects</li>
+<li>A collection of morphisms</li>
+<li>A notion of composition on the morphisms</li>
+<li>A distinguished morphism called identity</li>
+</ul>
+<p>Category theory is abstract enough to model many things, but let's apply this to types and functions, which is what we care about at the moment.</p>
+<p><strong>A collection of objects</strong>
+The objects will be data types. For instance, <code>String</code>, <code>Boolean</code>, <code>Number</code>, <code>Object</code>, etc. We often view data types as sets of all the possible values. One could look at <code>Boolean</code> as the set of <code>[true, false]</code> and <code>Number</code> as the set of all possible numeric values. Treating types as sets is useful because we can use set theory to work with them.</p>
+<p><strong>A collection of morphisms</strong>
+The morphisms will be our standard every day pure functions.</p>
+<p><strong>A notion of composition on the morphisms</strong>
+This, as you may have guessed, is our brand new toy - <code>compose</code>. We've discussed that our <code>compose</code> function is associative which is no coincidence as it is a property that must hold for any composition in category theory.</p>
+<p>Here is an image demonstrating composition:</p>
+<p><img alt="category composition 1" src="images/cat_comp1.png"/>
+<img alt="category composition 2" src="images/cat_comp2.png"/></p>
+<p>Here is a concrete example in code:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-15">const g = x =&gt; x.length;
+const f = x =&gt; x === 4;
+const isFourLetterWord = compose(f, g);
+</textarea><button onclick="runSandbox('sandbox-15')">Run Code</button><div class="sandbox-output" id="output-sandbox-15">Output will appear here...</div></div>
+<p><strong>A distinguished morphism called identity</strong>
+Let's introduce a useful function called <code>id</code>. This function simply takes some input and spits it back at you. Take a look:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-16">const id = x =&gt; x;
+</textarea><button onclick="runSandbox('sandbox-16')">Run Code</button><div class="sandbox-output" id="output-sandbox-16">Output will appear here...</div></div>
+<p>You might ask yourself "What in the bloody hell is that useful for?". We'll make extensive use of this function in the following chapters, but for now think of it as a function that can stand in for our value - a function masquerading as every day data.</p>
+<p><code>id</code> must play nicely with compose. Here is a property that always holds for every unary (unary: a one-argument function) function f:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-17">// identity
+compose(id, f) === compose(f, id) === f;
+// true
+</textarea><button onclick="runSandbox('sandbox-17')">Run Code</button><div class="sandbox-output" id="output-sandbox-17">Output will appear here...</div></div>
+<p>Hey, it's just like the identity property on numbers! If that's not immediately clear, take some time with it. Understand the futility. We'll be seeing <code>id</code> used all over the place soon, but for now we see it's a function that acts as a stand in for a given value. This is quite useful when writing pointfree code.</p>
+<p>So there you have it, a category of types and functions. If this is your first introduction, I imagine you're still a little fuzzy on what a category is and why it's useful. We will build upon this knowledge throughout the book. As of right now, in this chapter, on this line, you can at least see it as providing us with some wisdom regarding composition - namely, the associativity and identity properties.</p>
+<p>What are some other categories, you ask? Well, we can define one for directed graphs with nodes being objects, edges being morphisms, and composition just being path concatenation. We can define with Numbers as objects and <code>&gt;=</code> as morphisms (actually any partial or total order can be a category). There are heaps of categories, but for the purposes of this book, we'll only concern ourselves with the one defined above. We have sufficiently skimmed the surface and must move on.</p>
+<h2>In Summary</h2>
+<p>Composition connects our functions together like a series of pipes. Data will flow through our application as it must - pure functions are input to output after all, so breaking this chain would disregard output, rendering our software useless.</p>
+<p>We hold composition as a design principle above all others. This is because it keeps our app simple and reasonable. Category theory will play a big part in app architecture, modelling side effects, and ensuring correctness.</p>
+<p>We are now at a point where it would serve us well to see some of this in practice. Let's make an example application.</p>
+<p><a href="ch06.html">Chapter 06: Example Application</a></p>
+<h2>Exercises</h2>
+<p>In each following exercise, we'll consider Car objects with the following shape:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-18">{
+  name: 'Aston Martin One-77',
+  horsepower: 750,
+  dollar_value: 1850000,
+  in_stock: true,
+}
+</textarea><button onclick="runSandbox('sandbox-18')">Run Code</button><div class="sandbox-output" id="output-sandbox-18">Output will appear here...</div></div>
+<p>{% exercise %}<br/>
+Use <code>compose()</code> to rewrite the function below.  </p>
+<p>{% initial src="./exercises/ch05/exercise_a.js#L12;" %}  </p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-19">const isLastInStock = (cars) =&gt; {  
+  const lastCar = last(cars);  
+  return prop('in_stock', lastCar);  
+};  
+</textarea><button onclick="runSandbox('sandbox-19')">Run Code</button><div class="sandbox-output" id="output-sandbox-19">Output will appear here...</div></div>
+<p>{% solution src="./exercises/ch05/solution_a.js" %}<br/>
+{% validation src="./exercises/ch05/validation_a.js" %}<br/>
+{% context src="./exercises/support.js" %}<br/>
+{% endexercise %}  </p>
+<hr/>
+<p>Considering the following function:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-20">const average = xs =&gt; reduce(add, 0, xs) / xs.length;
+</textarea><button onclick="runSandbox('sandbox-20')">Run Code</button><div class="sandbox-output" id="output-sandbox-20">Output will appear here...</div></div>
+<p>{% exercise %}<br/>
+Use the helper function <code>average</code> to refactor <code>averageDollarValue</code> as a composition.  </p>
+<p>{% initial src="./exercises/ch05/exercise_b.js#L7;" %}  </p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-21">const averageDollarValue = (cars) =&gt; {  
+  const dollarValues = map(c =&gt; c.dollar_value, cars);  
+  return average(dollarValues);  
+};  
+</textarea><button onclick="runSandbox('sandbox-21')">Run Code</button><div class="sandbox-output" id="output-sandbox-21">Output will appear here...</div></div>
+<p>{% solution src="./exercises/ch05/solution_b.js" %}<br/>
+{% validation src="./exercises/ch05/validation_b.js" %}<br/>
+{% context src="./exercises/support.js" %}<br/>
+{% endexercise %}  </p>
+<hr/>
+<p>{% exercise %}<br/>
+Refactor <code>fastestCar</code> using <code>compose()</code> and other functions in pointfree-style. Hint, the<br/>
+<code>append</code> function may come in handy.  </p>
+<p>{% initial src="./exercises/ch05/exercise_c.js#L4;" %}  </p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-22">const fastestCar = (cars) =&gt; {  
+  const sorted = sortBy(car =&gt; car.horsepower, cars);  
+  const fastest = last(sorted);  
+  return concat(fastest.name, ' is the fastest');  
+};  
+</textarea><button onclick="runSandbox('sandbox-22')">Run Code</button><div class="sandbox-output" id="output-sandbox-22">Output will appear here...</div></div>
+<p>{% solution src="./exercises/ch05/solution_c.js" %}<br/>
+{% validation src="./exercises/ch05/validation_c.js" %}<br/>
+{% context src="./exercises/support.js" %}<br/>
+{% endexercise %}  </p>
+<script>
+function runSandbox(id) {
+    const code = document.getElementById('code-' + id).value;
+    const output = document.getElementById('output-' + id);
+    output.innerHTML = '';
+    
+    const originalLog = console.log;
+    console.log = function(...args) {
+        args.forEach(arg => {
+            output.innerHTML += '<div>' + arg + '</div>';
+        });
+        originalLog.apply(console, args);
+    };
+
+    try {
+        eval(code);
+    } catch (e) {
+        output.innerHTML += '<div style="color: red;">Error: ' + e.message + '</div>';
+    } finally {
+        console.log = originalLog;
+    }
+}
+</script>
+<style>
+.sandbox { border: 1px solid #ccc; padding: 10px; margin: 10px 0; border-radius: 5px; background-color: #f9f9f9; }
+.sandbox textarea { width: 100%; height: 100px; font-family: monospace; margin-bottom: 5px; padding: 5px; box-sizing: border-box; }
+.sandbox button { padding: 5px 10px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 3px; }
+.sandbox button:hover { background-color: #0056b3; }
+.sandbox-output { background: #fff; padding: 10px; margin-top: 5px; border: 1px solid #ddd; min-height: 40px; font-family: monospace; }
+</style>

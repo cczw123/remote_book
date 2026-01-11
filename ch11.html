@@ -1,0 +1,203 @@
+<h1>Chapter 11: Transform Again, Naturally</h1>
+<p>We are about to discuss <em>natural transformations</em> in the context of practical utility in every day code. It just so happens they are a pillar of category theory and absolutely indispensable when applying mathematics to reason about and refactor our code. As such, I believe it is my duty to inform you about the lamentable injustice you are about to witness undoubtedly due to my limited scope. Let's begin.</p>
+<h2>Curse This Nest</h2>
+<p>I'd like to address the issue of nesting. Not the instinctive urge felt by soon to be parents wherein they tidy and rearrange with obsessive compulsion, but the...well actually, come to think of it, that isn't far from the mark as we'll see in the coming chapters... In any case, what I mean by <em>nesting</em> is to have two or more different types all huddled together around a value, cradling it like a newborn, as it were.</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-0">Right(Maybe('b'));
+
+IO(Task(IO(1000)));
+
+[Identity('bee thousand')];
+</textarea><button onclick="runSandbox('sandbox-0')">Run Code</button><div class="sandbox-output" id="output-sandbox-0">Output will appear here...</div></div>
+<p>Until now, we've managed to evade this common scenario with carefully crafted examples, but in practice, as one codes, types tend to tangle themselves up like earbuds in an exorcism. If we don't meticulously keep our types organized as we go along, our code will read hairier than a beatnik in a cat café.</p>
+<h2>A Situational Comedy</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-1">// getValue :: Selector -&gt; Task Error (Maybe String)
+// postComment :: String -&gt; Task Error Comment
+// validate :: String -&gt; Either ValidationError String
+
+// saveComment :: () -&gt; Task Error (Maybe (Either ValidationError (Task Error Comment)))
+const saveComment = compose(
+  map(map(map(postComment))),
+  map(map(validate)),
+  getValue('#comment'),
+);
+</textarea><button onclick="runSandbox('sandbox-1')">Run Code</button><div class="sandbox-output" id="output-sandbox-1">Output will appear here...</div></div>
+<p>The gang is all here, much to our type signature's dismay. Allow me to briefly explain the code. We start by getting the user input with <code>getValue('#comment')</code> which is an action which retrieves text on an element. Now, it might error finding the element or the value string may not exist so it returns <code>Task Error (Maybe String)</code>. After that, we must <code>map</code> over both the <code>Task</code> and the <code>Maybe</code> to pass our text to <code>validate</code>, which in turn, gives us back <code>Either</code> a <code>ValidationError</code> or our <code>String</code>. Then onto mapping for days to send the <code>String</code> in our current <code>Task Error (Maybe (Either ValidationError String))</code> into <code>postComment</code> which returns our resulting <code>Task</code>.</p>
+<p>What a frightful mess. A collage of abstract types, amateur type expressionism, polymorphic Pollock, monolithic Mondrian. There are many solutions to this common issue. We can compose the types into one monstrous container, sort and <code>join</code> a few, homogenize them, deconstruct them, and so on. In this chapter, we'll focus on homogenizing them via <em>natural transformations</em>.</p>
+<h2>All Natural</h2>
+<p>A <em>Natural Transformation</em> is a "morphism between functors", that is, a function which operates on the containers themselves. Typewise, it is a function <code>(Functor f, Functor g) =&gt; f a -&gt; g a</code>. What makes it special is that we cannot, for any reason, peek at the contents of our functor. Think of it as an exchange of highly classified information - the two parties oblivious to what's in the sealed manila envelope stamped "top secret". This is a structural operation. A functorial costume change. Formally, a <em>natural transformation</em> is any function for which the following holds:</p>
+<p><img alt="natural transformation diagram" src="images/natural_transformation.png" width="600"/></p>
+<p>or in code:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-2">// nt :: (Functor f, Functor g) =&gt; f a -&gt; g a
+compose(map(f), nt) === compose(nt, map(f));
+</textarea><button onclick="runSandbox('sandbox-2')">Run Code</button><div class="sandbox-output" id="output-sandbox-2">Output will appear here...</div></div>
+<p>Both the diagram and the code say the same thing: We can run our natural transformation then <code>map</code> or <code>map</code> then run our natural transformation and get the same result. Incidentally, that follows from a <a href="ch07.md#free-as-in-theorem">free theorem</a> though natural transformations (and functors) are not limited to functions on types.</p>
+<h2>Principled Type Conversions</h2>
+<p>As programmers we are familiar with type conversions. We transform types like <code>Strings</code> into <code>Booleans</code> and <code>Integers</code> into <code>Floats</code> (though JavaScript only has <code>Numbers</code>). The difference here is simply that we're working with algebraic containers and we have some theory at our disposal.</p>
+<p>Let's look at some of these as examples:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-3">// idToMaybe :: Identity a -&gt; Maybe a
+const idToMaybe = x =&gt; Maybe.of(x.$value);
+
+// idToIO :: Identity a -&gt; IO a
+const idToIO = x =&gt; IO.of(x.$value);
+
+// eitherToTask :: Either a b -&gt; Task a b
+const eitherToTask = either(Task.rejected, Task.of);
+
+// ioToTask :: IO a -&gt; Task () a
+const ioToTask = x =&gt; new Task((reject, resolve) =&gt; resolve(x.unsafePerform()));
+
+// maybeToTask :: Maybe a -&gt; Task () a
+const maybeToTask = x =&gt; (x.isNothing ? Task.rejected() : Task.of(x.$value));
+
+// arrayToMaybe :: [a] -&gt; Maybe a
+const arrayToMaybe = x =&gt; Maybe.of(x[0]);
+</textarea><button onclick="runSandbox('sandbox-3')">Run Code</button><div class="sandbox-output" id="output-sandbox-3">Output will appear here...</div></div>
+<p>See the idea? We're just changing one functor to another. We are permitted to lose information along the way so long as the value we'll <code>map</code> doesn't get lost in the shape shift shuffle. That is the whole point: <code>map</code> must carry on, according to our definition, even after the transformation.</p>
+<p>One way to look at it is that we are transforming our effects. In that light, we can view <code>ioToTask</code> as converting synchronous to asynchronous or <code>arrayToMaybe</code> from nondeterminism to possible failure. Note that we cannot convert asynchronous to synchronous in JavaScript so we cannot write <code>taskToIO</code> - that would be a supernatural transformation.</p>
+<h2>Feature Envy</h2>
+<p>Suppose we'd like to use some features from another type like <code>sortBy</code> on a <code>List</code>. <em>Natural transformations</em> provide a nice way to convert to the target type knowing our <code>map</code> will be sound.</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-4">// arrayToList :: [a] -&gt; List a
+const arrayToList = List.of;
+
+const doListyThings = compose(sortBy(h), filter(g), arrayToList, map(f));
+const doListyThings_ = compose(sortBy(h), filter(g), map(f), arrayToList); // law applied
+</textarea><button onclick="runSandbox('sandbox-4')">Run Code</button><div class="sandbox-output" id="output-sandbox-4">Output will appear here...</div></div>
+<p>A wiggle of our nose, three taps of our wand, drop in <code>arrayToList</code>, and voilà! Our <code>[a]</code> is a <code>List a</code> and we can <code>sortBy</code> if we please.</p>
+<p>Also, it becomes easier to optimize / fuse operations by moving <code>map(f)</code> to the left of <em>natural transformation</em> as shown in <code>doListyThings_</code>.</p>
+<h2>Isomorphic JavaScript</h2>
+<p>When we can completely go back and forth without losing any information, that is considered an <em>isomorphism</em>. That's just a fancy word for "holds the same data". We say that two types are <em>isomorphic</em> if we can provide the "to" and "from" <em>natural transformations</em> as proof:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-5">// promiseToTask :: Promise a b -&gt; Task a b
+const promiseToTask = x =&gt; new Task((reject, resolve) =&gt; x.then(resolve).catch(reject));
+
+// taskToPromise :: Task a b -&gt; Promise a b
+const taskToPromise = x =&gt; new Promise((resolve, reject) =&gt; x.fork(reject, resolve));
+
+const x = Promise.resolve('ring');
+taskToPromise(promiseToTask(x)) === x;
+
+const y = Task.of('rabbit');
+promiseToTask(taskToPromise(y)) === y;
+</textarea><button onclick="runSandbox('sandbox-5')">Run Code</button><div class="sandbox-output" id="output-sandbox-5">Output will appear here...</div></div>
+<p>Q.E.D. <code>Promise</code> and <code>Task</code> are <em>isomorphic</em>. We can also write a <code>listToArray</code> to complement our <code>arrayToList</code> and show that they are too. As a counter example, <code>arrayToMaybe</code> is not an <em>isomorphism</em> since it loses information:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-6">// maybeToArray :: Maybe a -&gt; [a]
+const maybeToArray = x =&gt; (x.isNothing ? [] : [x.$value]);
+
+// arrayToMaybe :: [a] -&gt; Maybe a
+const arrayToMaybe = x =&gt; Maybe.of(x[0]);
+
+const x = ['elvis costello', 'the attractions'];
+
+// not isomorphic
+maybeToArray(arrayToMaybe(x)); // ['elvis costello']
+
+// but is a natural transformation
+compose(arrayToMaybe, map(replace('elvis', 'lou')))(x); // Just('lou costello')
+// ==
+compose(map(replace('elvis', 'lou')), arrayToMaybe)(x); // Just('lou costello')
+</textarea><button onclick="runSandbox('sandbox-6')">Run Code</button><div class="sandbox-output" id="output-sandbox-6">Output will appear here...</div></div>
+<p>They are indeed <em>natural transformations</em>, however, since <code>map</code> on either side yields the same result. I mention <em>isomorphisms</em> here, mid-chapter while we're on the subject, but don't let that fool you, they are an enormously powerful and pervasive concept. Anyways, let's move on.</p>
+<h2>A Broader Definition</h2>
+<p>These structural functions aren't limited to type conversions by any means.</p>
+<p>Here are a few different ones:</p>
+<pre><code class="language-hs">reverse :: [a] -&gt; [a]
+
+join :: (Monad m) =&gt; m (m a) -&gt; m a
+
+head :: [a] -&gt; a
+
+of :: a -&gt; f a
+</code></pre>
+<p>The natural transformation laws hold for these functions too. One thing that might trip you up is that <code>head :: [a] -&gt; a</code> can be viewed as <code>head :: [a] -&gt; Identity a</code>. We are free to insert <code>Identity</code> wherever we please whilst proving laws since we can, in turn, prove that <code>a</code> is isomorphic to <code>Identity a</code> (see, I told you <em>isomorphisms</em> were pervasive).</p>
+<h2>One Nesting Solution</h2>
+<p>Back to our comedic type signature. We can sprinkle in some <em>natural transformations</em> throughout the calling code to coerce each varying type so they are uniform and, therefore, <code>join</code>able.</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-7">// getValue :: Selector -&gt; Task Error (Maybe String)
+// postComment :: String -&gt; Task Error Comment
+// validate :: String -&gt; Either ValidationError String
+
+// saveComment :: () -&gt; Task Error Comment
+const saveComment = compose(
+  chain(postComment),
+  chain(eitherToTask),
+  map(validate),
+  chain(maybeToTask),
+  getValue('#comment'),
+);
+</textarea><button onclick="runSandbox('sandbox-7')">Run Code</button><div class="sandbox-output" id="output-sandbox-7">Output will appear here...</div></div>
+<p>So what do we have here? We've simply added <code>chain(maybeToTask)</code> and <code>chain(eitherToTask)</code>. Both have the same effect; they naturally transform the functor our <code>Task</code> is holding into another <code>Task</code> then <code>join</code> the two. Like pigeon spikes on a window ledge, we avoid nesting right at the source. As they say in the city of light, "Mieux vaut prévenir que guérir" - an ounce of prevention is worth a pound of cure.</p>
+<h2>In Summary</h2>
+<p><em>Natural transformations</em> are functions on our functors themselves. They are an extremely important concept in category theory and will start to appear everywhere once more abstractions are adopted, but for now, we've scoped them to a few concrete applications. As we saw, we can achieve different effects by converting types with the guarantee that our composition will hold. They can also help us with nested types, although they have the general effect of homogenizing our functors to the lowest common denominator, which in practice, is the functor with the most volatile effects (<code>Task</code> in most cases).</p>
+<p>This continual and tedious sorting of types is the price we pay for having materialized them - summoned them from the ether. Of course, implicit effects are much more insidious and so here we are fighting the good fight. We'll need a few more tools in our tackle before we can reel in the larger type amalgamations. Next up, we'll look at reordering our types with <em>Traversable</em>.</p>
+<p><a href="ch12.html">Chapter 12: Traversing the Stone</a></p>
+<h2>Exercises</h2>
+<p>{% exercise %}<br/>
+Write a natural transformation that converts <code>Either b a</code> to <code>Maybe a</code></p>
+<p>{% initial src="./exercises/ch11/exercise_a.js#L3;" %}  </p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-8">// eitherToMaybe :: Either b a -&gt; Maybe a  
+const eitherToMaybe = undefined;  
+</textarea><button onclick="runSandbox('sandbox-8')">Run Code</button><div class="sandbox-output" id="output-sandbox-8">Output will appear here...</div></div>
+<p>{% solution src="./exercises/ch11/solution_a.js" %}<br/>
+{% validation src="./exercises/ch11/validation_a.js" %}<br/>
+{% context src="./exercises/support.js" %}<br/>
+{% endexercise %}  </p>
+<hr/>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-9">// eitherToTask :: Either a b -&gt; Task a b
+const eitherToTask = either(Task.rejected, Task.of);
+</textarea><button onclick="runSandbox('sandbox-9')">Run Code</button><div class="sandbox-output" id="output-sandbox-9">Output will appear here...</div></div>
+<p>{% exercise %}<br/>
+Using <code>eitherToTask</code>, simplify <code>findNameById</code> to remove the nested <code>Either</code>.</p>
+<p>{% initial src="./exercises/ch11/exercise_b.js#L6;" %}  </p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-10">// findNameById :: Number -&gt; Task Error (Either Error User)  
+const findNameById = compose(map(map(prop('name'))), findUserById);  
+</textarea><button onclick="runSandbox('sandbox-10')">Run Code</button><div class="sandbox-output" id="output-sandbox-10">Output will appear here...</div></div>
+<p>{% solution src="./exercises/ch11/solution_b.js" %}<br/>
+{% validation src="./exercises/ch11/validation_b.js" %}<br/>
+{% context src="./exercises/support.js" %}<br/>
+{% endexercise %}  </p>
+<hr/>
+<p>As a reminder, the following functions are available in the exercise's context:</p>
+<pre><code class="language-hs">split :: String -&gt; String -&gt; [String]
+intercalate :: String -&gt; [String] -&gt; String
+</code></pre>
+<p>{% exercise %}<br/>
+Write the isomorphisms between String and [Char].</p>
+<p>{% initial src="./exercises/ch11/exercise_c.js#L8;" %}  </p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-11">// strToList :: String -&gt; [Char]  
+const strToList = undefined;  
+
+// listToStr :: [Char] -&gt; String  
+const listToStr = undefined;  
+</textarea><button onclick="runSandbox('sandbox-11')">Run Code</button><div class="sandbox-output" id="output-sandbox-11">Output will appear here...</div></div>
+<p>{% solution src="./exercises/ch11/solution_c.js" %}<br/>
+{% validation src="./exercises/ch11/validation_c.js" %}<br/>
+{% context src="./exercises/support.js" %}<br/>
+{% endexercise %}  </p>
+<script>
+function runSandbox(id) {
+    const code = document.getElementById('code-' + id).value;
+    const output = document.getElementById('output-' + id);
+    output.innerHTML = '';
+    
+    const originalLog = console.log;
+    console.log = function(...args) {
+        args.forEach(arg => {
+            output.innerHTML += '<div>' + arg + '</div>';
+        });
+        originalLog.apply(console, args);
+    };
+
+    try {
+        eval(code);
+    } catch (e) {
+        output.innerHTML += '<div style="color: red;">Error: ' + e.message + '</div>';
+    } finally {
+        console.log = originalLog;
+    }
+}
+</script>
+<style>
+.sandbox { border: 1px solid #ccc; padding: 10px; margin: 10px 0; border-radius: 5px; background-color: #f9f9f9; }
+.sandbox textarea { width: 100%; height: 100px; font-family: monospace; margin-bottom: 5px; padding: 5px; box-sizing: border-box; }
+.sandbox button { padding: 5px 10px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 3px; }
+.sandbox button:hover { background-color: #0056b3; }
+.sandbox-output { background: #fff; padding: 10px; margin-top: 5px; border: 1px solid #ddd; min-height: 40px; font-family: monospace; }
+</style>

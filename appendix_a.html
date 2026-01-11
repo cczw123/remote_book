@@ -1,0 +1,134 @@
+<h1>Appendix A: Essential Functions Support</h1>
+<p>In this appendix, you'll find some basic JavaScript implementations of various functions
+described in the book. Keep in mind that these implementations may not be the fastest or the
+most efficient implementation out there; they <em>solely serve an educational purpose</em>.</p>
+<p>In order to find functions that are more production-ready, have a peek at
+<a href="https://ramdajs.com/">ramda</a>, <a href="https://lodash.com/">lodash</a>, or <a href="http://folktale.origamitower.com/">folktale</a>.</p>
+<p>Note that some functions also refer to algebraic structures defined in the <a href="./appendix_b.html">Appendix B</a></p>
+<h2>always</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-0">// always :: a -&gt; b -&gt; a
+const always = curry((a, b) =&gt; a);
+</textarea><button onclick="runSandbox('sandbox-0')">Run Code</button><div class="sandbox-output" id="output-sandbox-0">Output will appear here...</div></div>
+<h2>compose</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-1">// compose :: ((y -&gt; z), (x -&gt; y),  ..., (a -&gt; b)) -&gt; a -&gt; z
+const compose = (...fns) =&gt; (...args) =&gt; fns.reduceRight((res, fn) =&gt; [fn.call(null, ...res)], args)[0];
+</textarea><button onclick="runSandbox('sandbox-1')">Run Code</button><div class="sandbox-output" id="output-sandbox-1">Output will appear here...</div></div>
+<h2>curry</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-2">// curry :: ((a, b, ...) -&gt; c) -&gt; a -&gt; b -&gt; ... -&gt; c
+function curry(fn) {
+  const arity = fn.length;
+
+  return function $curry(...args) {
+    if (args.length &lt; arity) {
+      return $curry.bind(null, ...args);
+    }
+
+    return fn.call(null, ...args);
+  };
+}
+</textarea><button onclick="runSandbox('sandbox-2')">Run Code</button><div class="sandbox-output" id="output-sandbox-2">Output will appear here...</div></div>
+<h2>either</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-3">// either :: (a -&gt; c) -&gt; (b -&gt; c) -&gt; Either a b -&gt; c
+const either = curry((f, g, e) =&gt; {
+  if (e.isLeft) {
+    return f(e.$value);
+  }
+
+  return g(e.$value);
+});
+</textarea><button onclick="runSandbox('sandbox-3')">Run Code</button><div class="sandbox-output" id="output-sandbox-3">Output will appear here...</div></div>
+<h2>identity</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-4">// identity :: x -&gt; x
+const identity = x =&gt; x;
+</textarea><button onclick="runSandbox('sandbox-4')">Run Code</button><div class="sandbox-output" id="output-sandbox-4">Output will appear here...</div></div>
+<h2>inspect</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-5">// inspect :: a -&gt; String
+const inspect = (x) =&gt; {
+  if (x &amp;&amp; typeof x.inspect === 'function') {
+    return x.inspect();
+  }
+
+  function inspectFn(f) {
+    return f.name ? f.name : f.toString();
+  }
+
+  function inspectTerm(t) {
+    switch (typeof t) {
+      case 'string':
+        return `'${t}'`;
+      case 'object': {
+        const ts = Object.keys(t).map(k =&gt; [k, inspect(t[k])]);
+        return `{${ts.map(kv =&gt; kv.join(': ')).join(', ')}}`;
+      }
+      default:
+        return String(t);
+    }
+  }
+
+  function inspectArgs(args) {
+    return Array.isArray(args) ? `[${args.map(inspect).join(', ')}]` : inspectTerm(args);
+  }
+
+  return (typeof x === 'function') ? inspectFn(x) : inspectArgs(x);
+};
+</textarea><button onclick="runSandbox('sandbox-5')">Run Code</button><div class="sandbox-output" id="output-sandbox-5">Output will appear here...</div></div>
+<h2>left</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-6">// left :: a -&gt; Either a b
+const left = a =&gt; new Left(a);
+</textarea><button onclick="runSandbox('sandbox-6')">Run Code</button><div class="sandbox-output" id="output-sandbox-6">Output will appear here...</div></div>
+<h2>liftA2</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-7">// liftA2 :: (Applicative f) =&gt; (a1 -&gt; a2 -&gt; b) -&gt; f a1 -&gt; f a2 -&gt; f b
+const liftA2 = curry((fn, a1, a2) =&gt; a1.map(fn).ap(a2));
+</textarea><button onclick="runSandbox('sandbox-7')">Run Code</button><div class="sandbox-output" id="output-sandbox-7">Output will appear here...</div></div>
+<h2>liftA3</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-8">// liftA3 :: (Applicative f) =&gt; (a1 -&gt; a2 -&gt; a3 -&gt; b) -&gt; f a1 -&gt; f a2 -&gt; f a3 -&gt; f b
+const liftA3 = curry((fn, a1, a2, a3) =&gt; a1.map(fn).ap(a2).ap(a3));
+</textarea><button onclick="runSandbox('sandbox-8')">Run Code</button><div class="sandbox-output" id="output-sandbox-8">Output will appear here...</div></div>
+<h2>maybe</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-9">// maybe :: b -&gt; (a -&gt; b) -&gt; Maybe a -&gt; b
+const maybe = curry((v, f, m) =&gt; {
+  if (m.isNothing) {
+    return v;
+  }
+
+  return f(m.$value);
+});
+</textarea><button onclick="runSandbox('sandbox-9')">Run Code</button><div class="sandbox-output" id="output-sandbox-9">Output will appear here...</div></div>
+<h2>nothing</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-10">// nothing :: Maybe a
+const nothing = Maybe.of(null);
+</textarea><button onclick="runSandbox('sandbox-10')">Run Code</button><div class="sandbox-output" id="output-sandbox-10">Output will appear here...</div></div>
+<h2>reject</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-11">// reject :: a -&gt; Task a b
+const reject = a =&gt; Task.rejected(a);
+</textarea><button onclick="runSandbox('sandbox-11')">Run Code</button><div class="sandbox-output" id="output-sandbox-11">Output will appear here...</div></div>
+<script>
+function runSandbox(id) {
+    const code = document.getElementById('code-' + id).value;
+    const output = document.getElementById('output-' + id);
+    output.innerHTML = '';
+    
+    const originalLog = console.log;
+    console.log = function(...args) {
+        args.forEach(arg => {
+            output.innerHTML += '<div>' + arg + '</div>';
+        });
+        originalLog.apply(console, args);
+    };
+
+    try {
+        eval(code);
+    } catch (e) {
+        output.innerHTML += '<div style="color: red;">Error: ' + e.message + '</div>';
+    } finally {
+        console.log = originalLog;
+    }
+}
+</script>
+<style>
+.sandbox { border: 1px solid #ccc; padding: 10px; margin: 10px 0; border-radius: 5px; background-color: #f9f9f9; }
+.sandbox textarea { width: 100%; height: 100px; font-family: monospace; margin-bottom: 5px; padding: 5px; box-sizing: border-box; }
+.sandbox button { padding: 5px 10px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 3px; }
+.sandbox button:hover { background-color: #0056b3; }
+.sandbox-output { background: #fff; padding: 10px; margin-top: 5px; border: 1px solid #ddd; min-height: 40px; font-family: monospace; }
+</style>

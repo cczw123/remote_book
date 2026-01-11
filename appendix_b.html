@@ -1,0 +1,422 @@
+<h1>Appendix B: Algebraic Structures Support</h1>
+<p>In this appendix, you'll find some basic JavaScript implementations of various algebraic
+structures described in the book. Keep in mind that these implementations may not be the fastest or the
+most efficient implementation out there; they <em>solely serve an educational purpose</em>.</p>
+<p>In order to find structures that are more production-ready, have a peek at <a href="http://folktale.origamitower.com/">folktale</a>
+or <a href="https://github.com/fantasyland">fantasy-land</a>.</p>
+<p>Note that some methods also refer to functions defined in the <a href="./appendix_a.html">Appendix A</a></p>
+<h2>Compose</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-0">const createCompose = curry((F, G) =&gt; class Compose {
+  constructor(x) {
+    this.$value = x;
+  }
+
+  [util.inspect.custom]() {
+    return `Compose(${inspect(this.$value)})`;
+  }
+
+  // ----- Pointed (Compose F G)
+  static of(x) {
+    return new Compose(F(G(x)));
+  }
+
+  // ----- Functor (Compose F G)
+  map(fn) {
+    return new Compose(this.$value.map(x =&gt; x.map(fn)));
+  }
+
+  // ----- Applicative (Compose F G)
+  ap(f) {
+    return f.map(this.$value);
+  }
+});
+</textarea><button onclick="runSandbox('sandbox-0')">Run Code</button><div class="sandbox-output" id="output-sandbox-0">Output will appear here...</div></div>
+<h2>Either</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-1">class Either {
+  constructor(x) {
+    this.$value = x;
+  }
+
+  // ----- Pointed (Either a)
+  static of(x) {
+    return new Right(x);
+  }
+}
+</textarea><button onclick="runSandbox('sandbox-1')">Run Code</button><div class="sandbox-output" id="output-sandbox-1">Output will appear here...</div></div>
+<h4>Left</h4>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-2">class Left extends Either {
+  get isLeft() {
+    return true;
+  }
+
+  get isRight() {
+    return false;
+  }
+
+  static of(x) {
+    throw new Error('`of` called on class Left (value) instead of Either (type)');
+  }
+
+  [util.inspect.custom]() {
+    return `Left(${inspect(this.$value)})`;
+  }
+
+  // ----- Functor (Either a)
+  map() {
+    return this;
+  }
+
+  // ----- Applicative (Either a)
+  ap() {
+    return this;
+  }
+
+  // ----- Monad (Either a)
+  chain() {
+    return this;
+  }
+
+  join() {
+    return this;
+  }
+
+  // ----- Traversable (Either a)
+  sequence(of) {
+    return of(this);
+  }
+
+  traverse(of, fn) {
+    return of(this);
+  }
+}
+</textarea><button onclick="runSandbox('sandbox-2')">Run Code</button><div class="sandbox-output" id="output-sandbox-2">Output will appear here...</div></div>
+<h4>Right</h4>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-3">class Right extends Either {
+  get isLeft() {
+    return false;
+  }
+
+  get isRight() {
+    return true;
+  }
+
+  static of(x) {
+    throw new Error('`of` called on class Right (value) instead of Either (type)');
+  }
+
+  [util.inspect.custom]() {
+    return `Right(${inspect(this.$value)})`;
+  }
+
+  // ----- Functor (Either a)
+  map(fn) {
+    return Either.of(fn(this.$value));
+  }
+
+  // ----- Applicative (Either a)
+  ap(f) {
+    return f.map(this.$value);
+  }
+
+  // ----- Monad (Either a)
+  chain(fn) {
+    return fn(this.$value);
+  }
+
+  join() {
+    return this.$value;
+  }
+
+  // ----- Traversable (Either a)
+  sequence(of) {
+    return this.traverse(of, identity);
+  }
+
+  traverse(of, fn) {
+    return fn(this.$value).map(Either.of);
+  }
+}
+</textarea><button onclick="runSandbox('sandbox-3')">Run Code</button><div class="sandbox-output" id="output-sandbox-3">Output will appear here...</div></div>
+<h2>Identity</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-4">class Identity {
+  constructor(x) {
+    this.$value = x;
+  }
+
+  [util.inspect.custom]() {
+    return `Identity(${inspect(this.$value)})`;
+  }
+
+  // ----- Pointed Identity
+  static of(x) {
+    return new Identity(x);
+  }
+
+  // ----- Functor Identity
+  map(fn) {
+    return Identity.of(fn(this.$value));
+  }
+
+  // ----- Applicative Identity
+  ap(f) {
+    return f.map(this.$value);
+  }
+
+  // ----- Monad Identity
+  chain(fn) {
+    return this.map(fn).join();
+  }
+
+  join() {
+    return this.$value;
+  }
+
+  // ----- Traversable Identity
+  sequence(of) {
+    return this.traverse(of, identity);
+  }
+
+  traverse(of, fn) {
+    return fn(this.$value).map(Identity.of);
+  }
+}
+</textarea><button onclick="runSandbox('sandbox-4')">Run Code</button><div class="sandbox-output" id="output-sandbox-4">Output will appear here...</div></div>
+<h2>IO</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-5">class IO {
+  constructor(fn) {
+    this.unsafePerformIO = fn;
+  }
+
+  [util.inspect.custom]() {
+    return 'IO(?)';
+  }
+
+  // ----- Pointed IO
+  static of(x) {
+    return new IO(() =&gt; x);
+  }
+
+  // ----- Functor IO
+  map(fn) {
+    return new IO(compose(fn, this.unsafePerformIO));
+  }
+
+  // ----- Applicative IO
+  ap(f) {
+    return this.chain(fn =&gt; f.map(fn));
+  }
+
+  // ----- Monad IO
+  chain(fn) {
+    return this.map(fn).join();
+  }
+
+  join() {
+    return new IO(() =&gt; this.unsafePerformIO().unsafePerformIO());
+  }
+}
+</textarea><button onclick="runSandbox('sandbox-5')">Run Code</button><div class="sandbox-output" id="output-sandbox-5">Output will appear here...</div></div>
+<h2>List</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-6">class List {
+  constructor(xs) {
+    this.$value = xs;
+  }
+
+  [util.inspect.custom]() {
+    return `List(${inspect(this.$value)})`;
+  }
+
+  concat(x) {
+    return new List(this.$value.concat(x));
+  }
+
+  // ----- Pointed List
+  static of(x) {
+    return new List([x]);
+  }
+
+  // ----- Functor List
+  map(fn) {
+    return new List(this.$value.map(fn));
+  }
+
+  // ----- Traversable List
+  sequence(of) {
+    return this.traverse(of, identity);
+  }
+
+  traverse(of, fn) {
+    return this.$value.reduce(
+      (f, a) =&gt; fn(a).map(b =&gt; bs =&gt; bs.concat(b)).ap(f),
+      of(new List([])),
+    );
+  }
+}
+</textarea><button onclick="runSandbox('sandbox-6')">Run Code</button><div class="sandbox-output" id="output-sandbox-6">Output will appear here...</div></div>
+<h2>Map</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-7">class Map {
+  constructor(x) {
+    this.$value = x;
+  }
+
+  [util.inspect.custom]() {
+    return `Map(${inspect(this.$value)})`;
+  }
+
+  insert(k, v) {
+    const singleton = {};
+    singleton[k] = v;
+    return Map.of(Object.assign({}, this.$value, singleton));
+  }
+
+  reduceWithKeys(fn, zero) {
+    return Object.keys(this.$value)
+      .reduce((acc, k) =&gt; fn(acc, this.$value[k], k), zero);
+  }
+
+  // ----- Functor (Map a)
+  map(fn) {
+    return this.reduceWithKeys(
+      (m, v, k) =&gt; m.insert(k, fn(v)),
+      new Map({}),
+    );
+  }
+
+  // ----- Traversable (Map a)
+  sequence(of) {
+    return this.traverse(of, identity);
+  }
+
+  traverse(of, fn) {
+    return this.reduceWithKeys(
+      (f, a, k) =&gt; fn(a).map(b =&gt; m =&gt; m.insert(k, b)).ap(f),
+      of(new Map({})),
+    );
+  }
+}
+</textarea><button onclick="runSandbox('sandbox-7')">Run Code</button><div class="sandbox-output" id="output-sandbox-7">Output will appear here...</div></div>
+<h2>Maybe</h2>
+<blockquote>
+<p>Note that <code>Maybe</code> could also be defined in a similar fashion as we did for <code>Either</code> with two 
+child classes <code>Just</code> and <code>Nothing</code>. This is simply a different flavor.</p>
+</blockquote>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-8">class Maybe {
+  get isNothing() {
+    return this.$value === null || this.$value === undefined;
+  }
+
+  get isJust() {
+    return !this.isNothing;
+  }
+
+  constructor(x) {
+    this.$value = x;
+  }
+
+  [util.inspect.custom]() {
+    return this.isNothing ? 'Nothing' : `Just(${inspect(this.$value)})`;
+  }
+
+  // ----- Pointed Maybe
+  static of(x) {
+    return new Maybe(x);
+  }
+
+  // ----- Functor Maybe
+  map(fn) {
+    return this.isNothing ? this : Maybe.of(fn(this.$value));
+  }
+
+  // ----- Applicative Maybe
+  ap(f) {
+    return this.isNothing ? this : f.map(this.$value);
+  }
+
+  // ----- Monad Maybe
+  chain(fn) {
+    return this.map(fn).join();
+  }
+
+  join() {
+    return this.isNothing ? this : this.$value;
+  }
+
+  // ----- Traversable Maybe
+  sequence(of) {
+    return this.traverse(of, identity);
+  }
+
+  traverse(of, fn) {
+    return this.isNothing ? of(this) : fn(this.$value).map(Maybe.of);
+  }
+}
+</textarea><button onclick="runSandbox('sandbox-8')">Run Code</button><div class="sandbox-output" id="output-sandbox-8">Output will appear here...</div></div>
+<h2>Task</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-9">class Task {
+  constructor(fork) {
+    this.fork = fork;
+  }
+
+  [util.inspect.custom]() {
+    return 'Task(?)';
+  }
+
+  static rejected(x) {
+    return new Task((reject, _) =&gt; reject(x));
+  }
+
+  // ----- Pointed (Task a)
+  static of(x) {
+    return new Task((_, resolve) =&gt; resolve(x));
+  }
+
+  // ----- Functor (Task a)
+  map(fn) {
+    return new Task((reject, resolve) =&gt; this.fork(reject, compose(resolve, fn)));
+  }
+
+  // ----- Applicative (Task a)
+  ap(f) {
+    return this.chain(fn =&gt; f.map(fn));
+  }
+
+  // ----- Monad (Task a)
+  chain(fn) {
+    return new Task((reject, resolve) =&gt; this.fork(reject, x =&gt; fn(x).fork(reject, resolve)));
+  }
+
+  join() {
+    return this.chain(identity);
+  }
+}
+</textarea><button onclick="runSandbox('sandbox-9')">Run Code</button><div class="sandbox-output" id="output-sandbox-9">Output will appear here...</div></div>
+<script>
+function runSandbox(id) {
+    const code = document.getElementById('code-' + id).value;
+    const output = document.getElementById('output-' + id);
+    output.innerHTML = '';
+    
+    const originalLog = console.log;
+    console.log = function(...args) {
+        args.forEach(arg => {
+            output.innerHTML += '<div>' + arg + '</div>';
+        });
+        originalLog.apply(console, args);
+    };
+
+    try {
+        eval(code);
+    } catch (e) {
+        output.innerHTML += '<div style="color: red;">Error: ' + e.message + '</div>';
+    } finally {
+        console.log = originalLog;
+    }
+}
+</script>
+<style>
+.sandbox { border: 1px solid #ccc; padding: 10px; margin: 10px 0; border-radius: 5px; background-color: #f9f9f9; }
+.sandbox textarea { width: 100%; height: 100px; font-family: monospace; margin-bottom: 5px; padding: 5px; box-sizing: border-box; }
+.sandbox button { padding: 5px 10px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 3px; }
+.sandbox button:hover { background-color: #0056b3; }
+.sandbox-output { background: #fff; padding: 10px; margin-top: 5px; border: 1px solid #ddd; min-height: 40px; font-family: monospace; }
+</style>

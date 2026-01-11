@@ -1,0 +1,122 @@
+<h1>Chapter 02: First Class Functions</h1>
+<h2>A Quick Review</h2>
+<p>When we say functions are "first class", we mean they are just like everyone else... so in other words a normal class. We can treat functions like any other data type and there is nothing particularly special about them - they may be stored in arrays, passed around as function parameters, assigned to variables, and what have you.</p>
+<p>That is JavaScript 101, but worth mentioning since a quick code search on github will reveal the collective evasion, or perhaps widespread ignorance of this concept. Shall we go for a feigned example? We shall.</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-0">const hi = name =&gt; `Hi ${name}`;
+const greeting = name =&gt; hi(name);
+</textarea><button onclick="runSandbox('sandbox-0')">Run Code</button><div class="sandbox-output" id="output-sandbox-0">Output will appear here...</div></div>
+<p>Here, the function wrapper around <code>hi</code> in <code>greeting</code> is completely redundant. Why? Because functions are <em>callable</em> in JavaScript. When <code>hi</code> has the <code>()</code> at the end it will run and return a value. When it does not, it simply returns the function stored in the variable. Just to be sure, have a look yourself:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-1">hi; // name =&gt; `Hi ${name}`
+hi("jonas"); // "Hi jonas"
+</textarea><button onclick="runSandbox('sandbox-1')">Run Code</button><div class="sandbox-output" id="output-sandbox-1">Output will appear here...</div></div>
+<p>Since <code>greeting</code> is merely in turn calling <code>hi</code> with the very same argument, we could simply write:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-2">const greeting = hi;
+greeting("times"); // "Hi times"
+</textarea><button onclick="runSandbox('sandbox-2')">Run Code</button><div class="sandbox-output" id="output-sandbox-2">Output will appear here...</div></div>
+<p>In other words, <code>hi</code> is already a function that expects one argument, why place another function around it that simply calls <code>hi</code> with the same bloody argument? It doesn't make any damn sense. It's like donning your heaviest parka in the dead of July just to blast the air and demand an ice lolly.</p>
+<p>It is obnoxiously verbose and, as it happens, bad practice to surround a function with another function merely to delay evaluation (we'll see why in a moment, but it has to do with maintenance)</p>
+<p>A solid understanding of this is critical before moving on, so let's examine a few more fun examples excavated from the library of npm packages.</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-3">// ignorant
+const getServerStuff = callback =&gt; ajaxCall(json =&gt; callback(json));
+
+// enlightened
+const getServerStuff = ajaxCall;
+</textarea><button onclick="runSandbox('sandbox-3')">Run Code</button><div class="sandbox-output" id="output-sandbox-3">Output will appear here...</div></div>
+<p>The world is littered with ajax code exactly like this. Here is the reason both are equivalent:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-4">// this line
+ajaxCall(json =&gt; callback(json));
+
+// is the same as this line
+ajaxCall(callback);
+
+// so refactor getServerStuff
+const getServerStuff = callback =&gt; ajaxCall(callback);
+
+// ...which is equivalent to this
+const getServerStuff = ajaxCall; // &lt;-- look mum, no ()'s
+</textarea><button onclick="runSandbox('sandbox-4')">Run Code</button><div class="sandbox-output" id="output-sandbox-4">Output will appear here...</div></div>
+<p>And that, folks, is how it is done. Once more so that we understand why I'm being so persistent.</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-5">const BlogController = {
+  index(posts) { return Views.index(posts); },
+  show(post) { return Views.show(post); },
+  create(attrs) { return Db.create(attrs); },
+  update(post, attrs) { return Db.update(post, attrs); },
+  destroy(post) { return Db.destroy(post); },
+};
+</textarea><button onclick="runSandbox('sandbox-5')">Run Code</button><div class="sandbox-output" id="output-sandbox-5">Output will appear here...</div></div>
+<p>This ridiculous controller is 99% fluff. We could either rewrite it as:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-6">const BlogController = {
+  index: Views.index,
+  show: Views.show,
+  create: Db.create,
+  update: Db.update,
+  destroy: Db.destroy,
+};
+</textarea><button onclick="runSandbox('sandbox-6')">Run Code</button><div class="sandbox-output" id="output-sandbox-6">Output will appear here...</div></div>
+<p>... or scrap it altogether since it does nothing more than just bundle our Views and Db together.</p>
+<h2>Why Favor First Class?</h2>
+<p>Okay, let's get down to the reasons to favor first class functions. As we saw in the <code>getServerStuff</code> and <code>BlogController</code> examples, it's easy to add layers of indirection that provide no added value and only increase the amount of redundant code to maintain and search through.</p>
+<p>In addition, if such a needlessly wrapped function must be changed, we must also need to change our wrapper function as well.</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-7">httpGet('/post/2', json =&gt; renderPost(json));
+</textarea><button onclick="runSandbox('sandbox-7')">Run Code</button><div class="sandbox-output" id="output-sandbox-7">Output will appear here...</div></div>
+<p>If <code>httpGet</code> were to change to send a possible <code>err</code>, we would need to go back and change the "glue".</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-8">// go back to every httpGet call in the application and explicitly pass err along.
+httpGet('/post/2', (json, err) =&gt; renderPost(json, err));
+</textarea><button onclick="runSandbox('sandbox-8')">Run Code</button><div class="sandbox-output" id="output-sandbox-8">Output will appear here...</div></div>
+<p>Had we written it as a first class function, much less would need to change:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-9">// renderPost is called from within httpGet with however many arguments it wants
+httpGet('/post/2', renderPost);
+</textarea><button onclick="runSandbox('sandbox-9')">Run Code</button><div class="sandbox-output" id="output-sandbox-9">Output will appear here...</div></div>
+<p>Besides the removal of unnecessary functions, we must name and reference arguments. Names are a bit of an issue, you see. We have potential misnomers - especially as the codebase ages and requirements change.</p>
+<p>Having multiple names for the same concept is a common source of confusion in projects. There is also the issue of generic code. For instance, these two functions do exactly the same thing, but one feels infinitely more general and reusable:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-10">// specific to our current blog
+const validArticles = articles =&gt;
+  articles.filter(article =&gt; article !== null &amp;&amp; article !== undefined),
+
+// vastly more relevant for future projects
+const compact = xs =&gt; xs.filter(x =&gt; x !== null &amp;&amp; x !== undefined);
+</textarea><button onclick="runSandbox('sandbox-10')">Run Code</button><div class="sandbox-output" id="output-sandbox-10">Output will appear here...</div></div>
+<p>By using specific naming, we've seemingly tied ourselves to specific data (in this case <code>articles</code>). This happens quite a bit and is a source of much reinvention.</p>
+<p>I must mention that, just like with Object-Oriented code, you must be aware of <code>this</code> coming to bite you in the jugular. If an underlying function uses <code>this</code> and we call it first class, we are subject to this leaky abstraction's wrath.</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-11">const fs = require('fs');
+
+// scary
+fs.readFile('freaky_friday.txt', Db.save);
+
+// less so
+fs.readFile('freaky_friday.txt', Db.save.bind(Db));
+</textarea><button onclick="runSandbox('sandbox-11')">Run Code</button><div class="sandbox-output" id="output-sandbox-11">Output will appear here...</div></div>
+<p>Having been bound to itself, the <code>Db</code> is free to access its prototypical garbage code. I avoid using <code>this</code> like a dirty nappy. There's really no need when writing functional code. However, when interfacing with other libraries, you might have to acquiesce to the mad world around us.</p>
+<p>Some will argue that <code>this</code> is necessary for optimizing speed. If you are the micro-optimization sort, please close this book. If you cannot get your money back, perhaps you can exchange it for something more fiddly.</p>
+<p>And with that, we're ready to move on.</p>
+<p><a href="ch03.html">Chapter 03: Pure Happiness with Pure Functions</a></p>
+<script>
+function runSandbox(id) {
+    const code = document.getElementById('code-' + id).value;
+    const output = document.getElementById('output-' + id);
+    output.innerHTML = '';
+    
+    const originalLog = console.log;
+    console.log = function(...args) {
+        args.forEach(arg => {
+            output.innerHTML += '<div>' + arg + '</div>';
+        });
+        originalLog.apply(console, args);
+    };
+
+    try {
+        eval(code);
+    } catch (e) {
+        output.innerHTML += '<div style="color: red;">Error: ' + e.message + '</div>';
+    } finally {
+        console.log = originalLog;
+    }
+}
+</script>
+<style>
+.sandbox { border: 1px solid #ccc; padding: 10px; margin: 10px 0; border-radius: 5px; background-color: #f9f9f9; }
+.sandbox textarea { width: 100%; height: 100px; font-family: monospace; margin-bottom: 5px; padding: 5px; box-sizing: border-box; }
+.sandbox button { padding: 5px 10px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 3px; }
+.sandbox button:hover { background-color: #0056b3; }
+.sandbox-output { background: #fff; padding: 10px; margin-top: 5px; border: 1px solid #ddd; min-height: 40px; font-family: monospace; }
+</style>

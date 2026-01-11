@@ -1,0 +1,149 @@
+<h1>Chapter 04: Currying</h1>
+<h2>Can't Live If Livin' Is without You</h2>
+<p>My Dad once explained how there are certain things one can live without until one acquires them. A microwave is one such thing. Smart phones, another. The older folks among us will remember a fulfilling life sans internet. For me, currying is on this list.</p>
+<p>The concept is simple: You can call a function with fewer arguments than it expects. It returns a function that takes the remaining arguments.</p>
+<p>You can choose to call it all at once or simply feed in each argument piecemeal.</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-0">const add = x =&gt; y =&gt; x + y;
+const increment = add(1);
+const addTen = add(10);
+
+increment(2); // 3
+addTen(2); // 12
+</textarea><button onclick="runSandbox('sandbox-0')">Run Code</button><div class="sandbox-output" id="output-sandbox-0">Output will appear here...</div></div>
+<p>Here we've made a function <code>add</code> that takes one argument and returns a function. By calling it, the returned function remembers the first argument from then on via the closure. Calling it with both arguments all at once is a bit of a pain, however, so we can use a special helper function called <code>curry</code> to make defining and calling functions like this easier.</p>
+<p>Let's set up a few curried functions for our enjoyment. From now on, we'll summon our <code>curry</code>
+function defined in the <a href="./appendix_a.html">Appendix A - Essential Function Support</a>. </p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-1">const match = curry((what, s) =&gt; s.match(what));
+const replace = curry((what, replacement, s) =&gt; s.replace(what, replacement));
+const filter = curry((f, xs) =&gt; xs.filter(f));
+const map = curry((f, xs) =&gt; xs.map(f));
+</textarea><button onclick="runSandbox('sandbox-1')">Run Code</button><div class="sandbox-output" id="output-sandbox-1">Output will appear here...</div></div>
+<p>The pattern I've followed is a simple, but important one. I've strategically positioned the data we're operating on (String, Array) as the last argument. It will become clear as to why upon use.</p>
+<p>(The syntax <code>/r/g</code>  is a regular expression that means <em>match every letter 'r'</em>. Read <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions">more about regular expressions</a> if you like.)</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-2">match(/r/g, 'hello world'); // [ 'r' ]
+
+const hasLetterR = match(/r/g); // x =&gt; x.match(/r/g)
+hasLetterR('hello world'); // [ 'r' ]
+hasLetterR('just j and s and t etc'); // null
+
+filter(hasLetterR, ['rock and roll', 'smooth jazz']); // ['rock and roll']
+
+const removeStringsWithoutRs = filter(hasLetterR); // xs =&gt; xs.filter(x =&gt; x.match(/r/g))
+removeStringsWithoutRs(['rock and roll', 'smooth jazz', 'drum circle']); // ['rock and roll', 'drum circle']
+
+const noVowels = replace(/[aeiou]/ig); // (r,x) =&gt; x.replace(/[aeiou]/ig, r)
+const censored = noVowels('*'); // x =&gt; x.replace(/[aeiou]/ig, '*')
+censored('Chocolate Rain'); // 'Ch*c*l*t* R**n'
+</textarea><button onclick="runSandbox('sandbox-2')">Run Code</button><div class="sandbox-output" id="output-sandbox-2">Output will appear here...</div></div>
+<p>What's demonstrated here is the ability to "pre-load" a function with an argument or two in order to receive a new function that remembers those arguments.</p>
+<p>I encourage you to clone the Mostly Adequate repository (<code>git clone
+https://github.com/MostlyAdequate/mostly-adequate-guide.git</code>), copy the code above and have a
+go at it in the REPL. The curry function, as well as actually anything defined in the appendixes,
+are available in the <code>support/index.js</code> module.</p>
+<p>Alternatively, have a look at a published version on <code>npm</code>:</p>
+<pre><code>npm install @mostly-adequate/support
+</code></pre>
+<h2>More Than a Pun / Special Sauce</h2>
+<p>Currying is useful for many things. We can make new functions just by giving our base functions some arguments as seen in <code>hasLetterR</code>, <code>removeStringsWithoutRs</code>, and <code>censored</code>.</p>
+<p>We also have the ability to transform any function that works on single elements into a function that works on arrays simply by wrapping it with <code>map</code>:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-3">const getChildren = x =&gt; x.childNodes;
+const allTheChildren = map(getChildren);
+</textarea><button onclick="runSandbox('sandbox-3')">Run Code</button><div class="sandbox-output" id="output-sandbox-3">Output will appear here...</div></div>
+<p>Giving a function fewer arguments than it expects is typically called <em>partial application</em>. Partially applying a function can remove a lot of boiler plate code. Consider what the above <code>allTheChildren</code> function would be with the uncurried <code>map</code> from lodash (note the arguments are in a different order):</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-4">const allTheChildren = elements =&gt; map(elements, getChildren);
+</textarea><button onclick="runSandbox('sandbox-4')">Run Code</button><div class="sandbox-output" id="output-sandbox-4">Output will appear here...</div></div>
+<p>We typically don't define functions that work on arrays, because we can just call <code>map(getChildren)</code> inline. Same with <code>sort</code>, <code>filter</code>, and other higher order functions (a <em>higher order function</em> is a function that takes or returns a function).</p>
+<p>When we spoke about <em>pure functions</em>, we said they take 1 input to 1 output. Currying does exactly this: each single argument returns a new function expecting the remaining arguments. That, old sport, is 1 input to 1 output.</p>
+<p>No matter if the output is another function - it qualifies as pure. We do allow more than one argument at a time, but this is seen as merely removing the extra <code>()</code>'s for convenience.</p>
+<h2>In Summary</h2>
+<p>Currying is handy and I very much enjoy working with curried functions on a daily basis. It is a tool for the belt that makes functional programming less verbose and tedious.</p>
+<p>We can make new, useful functions on the fly simply by passing in a few arguments and as a bonus, we've retained the mathematical function definition despite multiple arguments.</p>
+<p>Let's acquire another essential tool called <code>compose</code>.</p>
+<p><a href="ch05.html">Chapter 05: Coding by Composing</a></p>
+<h2>Exercises</h2>
+<h4>Note about Exercises</h4>
+<p>Throughout the book, you might encounter an 'Exercises' section like this one. Exercises can be
+done directly in-browser provided you're reading from <a href="https://mostly-adequate.gitbooks.io/mostly-adequate-guide">gitbook</a> (recommended).</p>
+<p>Note that, for all exercises of the book, you always have a handful of helper functions
+available in the global scope. Hence, anything that is defined in <a href="./appendix_a.html">Appendix A</a>,
+<a href="./appendix_b.html">Appendix B</a> and <a href="./appendix_c.html">Appendix C</a> is available for you! And, as
+if it wasn't enough, some exercises will also define functions specific to the problem
+they present; as a matter of fact, consider them available as well.</p>
+<blockquote>
+<p>Hint: you can submit your solution by doing <code>Ctrl + Enter</code> in the embedded editor!</p>
+</blockquote>
+<h4>Running Exercises on Your Machine (optional)</h4>
+<p>Should you prefer to do exercises directly in files using your own editor:</p>
+<ul>
+<li>clone the repository (<code>git clone git@github.com:MostlyAdequate/mostly-adequate-guide.git</code>)</li>
+<li>go in the <em>exercises</em> section (<code>cd mostly-adequate-guide/exercises</code>)</li>
+<li>be sure to be using the recommended node version v10.22.1 (e.g. <code>nvm install</code>). More on this in <a href="./README.md#about-the-nodejs-version">the readme of the book</a></li>
+<li>install the necessary plumbing using <a href="https://docs.npmjs.com/downloading-and-installing-node-js-and-npm">npm</a> (<code>npm install</code>)</li>
+<li>complete answers by modifying the files named <em>exercise_*</em> in the corresponding chapter's folder </li>
+<li>run the correction with npm (e.g. <code>npm run ch04</code>)</li>
+</ul>
+<p>Unit tests will run against your answers and provide hints in case of mistake. By the by, the
+answers to the exercises are available in files named <em>solution_*</em>.</p>
+<h4>Let's Practice!</h4>
+<p>{% exercise %}<br/>
+Refactor to remove all arguments by partially applying the function.  </p>
+<p>{% initial src="./exercises/ch04/exercise_a.js#L3;" %}  </p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-5">const words = str =&gt; split(' ', str);  
+</textarea><button onclick="runSandbox('sandbox-5')">Run Code</button><div class="sandbox-output" id="output-sandbox-5">Output will appear here...</div></div>
+<p>{% solution src="./exercises/ch04/solution_a.js" %}<br/>
+{% validation src="./exercises/ch04/validation_a.js" %}<br/>
+{% context src="./exercises/support.js" %}<br/>
+{% endexercise %}  </p>
+<hr/>
+<p>{% exercise %}<br/>
+Refactor to remove all arguments by partially applying the functions.  </p>
+<p>{% initial src="./exercises/ch04/exercise_b.js#L3;" %}  </p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-6">const filterQs = xs =&gt; filter(x =&gt; match(/q/i, x), xs);
+</textarea><button onclick="runSandbox('sandbox-6')">Run Code</button><div class="sandbox-output" id="output-sandbox-6">Output will appear here...</div></div>
+<p>{% solution src="./exercises/ch04/solution_b.js" %}<br/>
+{% validation src="./exercises/ch04/validation_b.js" %}<br/>
+{% context src="./exercises/support.js" %}<br/>
+{% endexercise %}  </p>
+<hr/>
+<p>Considering the following function:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-7">const keepHighest = (x, y) =&gt; (x &gt;= y ? x : y);  
+</textarea><button onclick="runSandbox('sandbox-7')">Run Code</button><div class="sandbox-output" id="output-sandbox-7">Output will appear here...</div></div>
+<p>{% exercise %}<br/>
+Refactor <code>max</code> to not reference any arguments using the helper function <code>keepHighest</code>.  </p>
+<p>{% initial src="./exercises/ch04/exercise_c.js#L7;" %}  </p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-8">const max = xs =&gt; reduce((acc, x) =&gt; (x &gt;= acc ? x : acc), -Infinity, xs);  
+</textarea><button onclick="runSandbox('sandbox-8')">Run Code</button><div class="sandbox-output" id="output-sandbox-8">Output will appear here...</div></div>
+<p>{% solution src="./exercises/ch04/solution_c.js" %}<br/>
+{% validation src="./exercises/ch04/validation_c.js" %}<br/>
+{% context src="./exercises/support.js" %}<br/>
+{% endexercise %}  </p>
+<script>
+function runSandbox(id) {
+    const code = document.getElementById('code-' + id).value;
+    const output = document.getElementById('output-' + id);
+    output.innerHTML = '';
+    
+    const originalLog = console.log;
+    console.log = function(...args) {
+        args.forEach(arg => {
+            output.innerHTML += '<div>' + arg + '</div>';
+        });
+        originalLog.apply(console, args);
+    };
+
+    try {
+        eval(code);
+    } catch (e) {
+        output.innerHTML += '<div style="color: red;">Error: ' + e.message + '</div>';
+    } finally {
+        console.log = originalLog;
+    }
+}
+</script>
+<style>
+.sandbox { border: 1px solid #ccc; padding: 10px; margin: 10px 0; border-radius: 5px; background-color: #f9f9f9; }
+.sandbox textarea { width: 100%; height: 100px; font-family: monospace; margin-bottom: 5px; padding: 5px; box-sizing: border-box; }
+.sandbox button { padding: 5px 10px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 3px; }
+.sandbox button:hover { background-color: #0056b3; }
+.sandbox-output { background: #fff; padding: 10px; margin-top: 5px; border: 1px solid #ddd; min-height: 40px; font-family: monospace; }
+</style>

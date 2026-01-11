@@ -1,0 +1,42 @@
+<h1>2.0.1 - 2019-06-26</h1>
+<ul>
+<li>Fix <code>Maybe.sequence</code> missing a <code>return</code> statement</li>
+</ul>
+<h1>2.0.0 - 2019-05-24</h1>
+<ul>
+<li>Change <code>nothing :: () -&gt; Maybe a</code> to <code>nothing :: Maybe a</code></li>
+</ul>
+<h1>1.2.0 - 2019-05-05</h1>
+<ul>
+<li>Fix <code>inspect</code> deprecation warning on node.js</li>
+</ul>
+<script>
+function runSandbox(id) {
+    const code = document.getElementById('code-' + id).value;
+    const output = document.getElementById('output-' + id);
+    output.innerHTML = '';
+    
+    const originalLog = console.log;
+    console.log = function(...args) {
+        args.forEach(arg => {
+            output.innerHTML += '<div>' + arg + '</div>';
+        });
+        originalLog.apply(console, args);
+    };
+
+    try {
+        eval(code);
+    } catch (e) {
+        output.innerHTML += '<div style="color: red;">Error: ' + e.message + '</div>';
+    } finally {
+        console.log = originalLog;
+    }
+}
+</script>
+<style>
+.sandbox { border: 1px solid #ccc; padding: 10px; margin: 10px 0; border-radius: 5px; background-color: #f9f9f9; }
+.sandbox textarea { width: 100%; height: 100px; font-family: monospace; margin-bottom: 5px; padding: 5px; box-sizing: border-box; }
+.sandbox button { padding: 5px 10px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 3px; }
+.sandbox button:hover { background-color: #0056b3; }
+.sandbox-output { background: #fff; padding: 10px; margin-top: 5px; border: 1px solid #ddd; min-height: 40px; font-family: monospace; }
+</style>

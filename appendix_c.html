@@ -1,0 +1,164 @@
+<h1>Appendix C: Pointfree Utilities</h1>
+<p>In this appendix, you'll find pointfree versions of rather classic JavaScript functions
+described in the book. All of the following functions are seemingly available in exercises, as
+part of the global context. Keep in mind that these implementations may not be the fastest or
+the most efficient implementation out there; they <em>solely serve an educational purpose</em>.</p>
+<p>In order to find functions that are more production-ready, have a peek at
+<a href="https://ramdajs.com/">ramda</a>, <a href="https://lodash.com/">lodash</a>, or <a href="http://folktale.origamitower.com/">folktale</a>.</p>
+<p>Note that functions refer to the <code>curry</code> &amp; <code>compose</code> functions defined in <a href="./appendix_a.html">Appendix A</a></p>
+<h2>add</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-0">// add :: Number -&gt; Number -&gt; Number
+const add = curry((a, b) =&gt; a + b);
+</textarea><button onclick="runSandbox('sandbox-0')">Run Code</button><div class="sandbox-output" id="output-sandbox-0">Output will appear here...</div></div>
+<h2>append</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-1">// append :: String -&gt; String -&gt; String
+const append = flip(concat);
+</textarea><button onclick="runSandbox('sandbox-1')">Run Code</button><div class="sandbox-output" id="output-sandbox-1">Output will appear here...</div></div>
+<h2>chain</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-2">// chain :: Monad m =&gt; (a -&gt; m b) -&gt; m a -&gt; m b
+const chain = curry((fn, m) =&gt; m.chain(fn));
+</textarea><button onclick="runSandbox('sandbox-2')">Run Code</button><div class="sandbox-output" id="output-sandbox-2">Output will appear here...</div></div>
+<h2>concat</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-3">// concat :: String -&gt; String -&gt; String
+const concat = curry((a, b) =&gt; a.concat(b));
+</textarea><button onclick="runSandbox('sandbox-3')">Run Code</button><div class="sandbox-output" id="output-sandbox-3">Output will appear here...</div></div>
+<h2>eq</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-4">// eq :: Eq a =&gt; a -&gt; a -&gt; Boolean
+const eq = curry((a, b) =&gt; a === b);
+</textarea><button onclick="runSandbox('sandbox-4')">Run Code</button><div class="sandbox-output" id="output-sandbox-4">Output will appear here...</div></div>
+<h2>filter</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-5">// filter :: (a -&gt; Boolean) -&gt; [a] -&gt; [a]
+const filter = curry((fn, xs) =&gt; xs.filter(fn));
+</textarea><button onclick="runSandbox('sandbox-5')">Run Code</button><div class="sandbox-output" id="output-sandbox-5">Output will appear here...</div></div>
+<h2>flip</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-6">// flip :: (a -&gt; b -&gt; c) -&gt; b -&gt; a -&gt; c
+const flip = curry((fn, a, b) =&gt; fn(b, a));
+</textarea><button onclick="runSandbox('sandbox-6')">Run Code</button><div class="sandbox-output" id="output-sandbox-6">Output will appear here...</div></div>
+<h2>forEach</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-7">// forEach :: (a -&gt; ()) -&gt; [a] -&gt; ()
+const forEach = curry((fn, xs) =&gt; xs.forEach(fn));
+</textarea><button onclick="runSandbox('sandbox-7')">Run Code</button><div class="sandbox-output" id="output-sandbox-7">Output will appear here...</div></div>
+<h2>head</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-8">// head :: [a] -&gt; a
+const head = xs =&gt; xs[0];
+</textarea><button onclick="runSandbox('sandbox-8')">Run Code</button><div class="sandbox-output" id="output-sandbox-8">Output will appear here...</div></div>
+<h2>intercalate</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-9">// intercalate :: String -&gt; [String] -&gt; String
+const intercalate = curry((str, xs) =&gt; xs.join(str));
+</textarea><button onclick="runSandbox('sandbox-9')">Run Code</button><div class="sandbox-output" id="output-sandbox-9">Output will appear here...</div></div>
+<h2>join</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-10">// join :: Monad m =&gt; m (m a) -&gt; m a
+const join = m =&gt; m.join();
+</textarea><button onclick="runSandbox('sandbox-10')">Run Code</button><div class="sandbox-output" id="output-sandbox-10">Output will appear here...</div></div>
+<h2>last</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-11">// last :: [a] -&gt; a
+const last = xs =&gt; xs[xs.length - 1];
+</textarea><button onclick="runSandbox('sandbox-11')">Run Code</button><div class="sandbox-output" id="output-sandbox-11">Output will appear here...</div></div>
+<h2>map</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-12">// map :: Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+const map = curry((fn, f) =&gt; f.map(fn));
+</textarea><button onclick="runSandbox('sandbox-12')">Run Code</button><div class="sandbox-output" id="output-sandbox-12">Output will appear here...</div></div>
+<h2>match</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-13">// match :: RegExp -&gt; String -&gt; Boolean
+const match = curry((re, str) =&gt; re.test(str));
+</textarea><button onclick="runSandbox('sandbox-13')">Run Code</button><div class="sandbox-output" id="output-sandbox-13">Output will appear here...</div></div>
+<h2>prop</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-14">// prop :: String -&gt; Object -&gt; a
+const prop = curry((p, obj) =&gt; obj[p]);
+</textarea><button onclick="runSandbox('sandbox-14')">Run Code</button><div class="sandbox-output" id="output-sandbox-14">Output will appear here...</div></div>
+<h2>reduce</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-15">// reduce :: (b -&gt; a -&gt; b) -&gt; b -&gt; [a] -&gt; b
+const reduce = curry((fn, zero, xs) =&gt; xs.reduce(fn, zero));
+</textarea><button onclick="runSandbox('sandbox-15')">Run Code</button><div class="sandbox-output" id="output-sandbox-15">Output will appear here...</div></div>
+<h2>replace</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-16">// replace :: RegExp -&gt; String -&gt; String -&gt; String
+const replace = curry((re, rpl, str) =&gt; str.replace(re, rpl));
+</textarea><button onclick="runSandbox('sandbox-16')">Run Code</button><div class="sandbox-output" id="output-sandbox-16">Output will appear here...</div></div>
+<h2>reverse</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-17">// reverse :: [a] -&gt; [a]
+const reverse = x =&gt; (Array.isArray(x) ? x.reverse() : x.split('').reverse().join(''));
+</textarea><button onclick="runSandbox('sandbox-17')">Run Code</button><div class="sandbox-output" id="output-sandbox-17">Output will appear here...</div></div>
+<h2>safeHead</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-18">// safeHead :: [a] -&gt; Maybe a
+const safeHead = compose(Maybe.of, head);
+</textarea><button onclick="runSandbox('sandbox-18')">Run Code</button><div class="sandbox-output" id="output-sandbox-18">Output will appear here...</div></div>
+<h2>safeLast</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-19">// safeLast :: [a] -&gt; Maybe a
+const safeLast = compose(Maybe.of, last);
+</textarea><button onclick="runSandbox('sandbox-19')">Run Code</button><div class="sandbox-output" id="output-sandbox-19">Output will appear here...</div></div>
+<h2>safeProp</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-20">// safeProp :: String -&gt; Object -&gt; Maybe a
+const safeProp = curry((p, obj) =&gt; compose(Maybe.of, prop(p))(obj));
+</textarea><button onclick="runSandbox('sandbox-20')">Run Code</button><div class="sandbox-output" id="output-sandbox-20">Output will appear here...</div></div>
+<h2>sequence</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-21">// sequence :: (Applicative f, Traversable t) =&gt; (a -&gt; f a) -&gt; t (f a) -&gt; f (t a)
+const sequence = curry((of, f) =&gt; f.sequence(of));
+</textarea><button onclick="runSandbox('sandbox-21')">Run Code</button><div class="sandbox-output" id="output-sandbox-21">Output will appear here...</div></div>
+<h2>sortBy</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-22">// sortBy :: Ord b =&gt; (a -&gt; b) -&gt; [a] -&gt; [a]
+const sortBy = curry((fn, xs) =&gt; xs.sort((a, b) =&gt; {
+  if (fn(a) === fn(b)) {
+    return 0;
+  }
+
+  return fn(a) &gt; fn(b) ? 1 : -1;
+}));
+</textarea><button onclick="runSandbox('sandbox-22')">Run Code</button><div class="sandbox-output" id="output-sandbox-22">Output will appear here...</div></div>
+<h2>split</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-23">// split :: String -&gt; String -&gt; [String]
+const split = curry((sep, str) =&gt; str.split(sep));
+</textarea><button onclick="runSandbox('sandbox-23')">Run Code</button><div class="sandbox-output" id="output-sandbox-23">Output will appear here...</div></div>
+<h2>take</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-24">// take :: Number -&gt; [a] -&gt; [a]
+const take = curry((n, xs) =&gt; xs.slice(0, n));
+</textarea><button onclick="runSandbox('sandbox-24')">Run Code</button><div class="sandbox-output" id="output-sandbox-24">Output will appear here...</div></div>
+<h2>toLowerCase</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-25">// toLowerCase :: String -&gt; String
+const toLowerCase = s =&gt; s.toLowerCase();
+</textarea><button onclick="runSandbox('sandbox-25')">Run Code</button><div class="sandbox-output" id="output-sandbox-25">Output will appear here...</div></div>
+<h2>toString</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-26">// toString :: a -&gt; String
+const toString = String;
+</textarea><button onclick="runSandbox('sandbox-26')">Run Code</button><div class="sandbox-output" id="output-sandbox-26">Output will appear here...</div></div>
+<h2>toUpperCase</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-27">// toUpperCase :: String -&gt; String
+const toUpperCase = s =&gt; s.toUpperCase();
+</textarea><button onclick="runSandbox('sandbox-27')">Run Code</button><div class="sandbox-output" id="output-sandbox-27">Output will appear here...</div></div>
+<h2>traverse</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-28">// traverse :: (Applicative f, Traversable t) =&gt; (a -&gt; f a) -&gt; (a -&gt; f b) -&gt; t a -&gt; f (t b)
+const traverse = curry((of, fn, f) =&gt; f.traverse(of, fn));
+</textarea><button onclick="runSandbox('sandbox-28')">Run Code</button><div class="sandbox-output" id="output-sandbox-28">Output will appear here...</div></div>
+<h2>unsafePerformIO</h2>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-29">// unsafePerformIO :: IO a -&gt; a
+const unsafePerformIO = io =&gt; io.unsafePerformIO();
+</textarea><button onclick="runSandbox('sandbox-29')">Run Code</button><div class="sandbox-output" id="output-sandbox-29">Output will appear here...</div></div>
+<script>
+function runSandbox(id) {
+    const code = document.getElementById('code-' + id).value;
+    const output = document.getElementById('output-' + id);
+    output.innerHTML = '';
+    
+    const originalLog = console.log;
+    console.log = function(...args) {
+        args.forEach(arg => {
+            output.innerHTML += '<div>' + arg + '</div>';
+        });
+        originalLog.apply(console, args);
+    };
+
+    try {
+        eval(code);
+    } catch (e) {
+        output.innerHTML += '<div style="color: red;">Error: ' + e.message + '</div>';
+    } finally {
+        console.log = originalLog;
+    }
+}
+</script>
+<style>
+.sandbox { border: 1px solid #ccc; padding: 10px; margin: 10px 0; border-radius: 5px; background-color: #f9f9f9; }
+.sandbox textarea { width: 100%; height: 100px; font-family: monospace; margin-bottom: 5px; padding: 5px; box-sizing: border-box; }
+.sandbox button { padding: 5px 10px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 3px; }
+.sandbox button:hover { background-color: #0056b3; }
+.sandbox-output { background: #fff; padding: 10px; margin-top: 5px; border: 1px solid #ddd; min-height: 40px; font-family: monospace; }
+</style>

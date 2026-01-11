@@ -1,0 +1,128 @@
+<h2>FAQ</h2>
+<ul>
+<li><a href="#why-are-snippets-written-sometimes-with-semicolons-and-sometimes-without">Why are snippets written sometimes with semicolons and sometimes
+  without?</a></li>
+<li><a href="#arent-external-libraries-like-_-ramda-or--jquery-making-calls-impure">Aren't external libraries like _ (ramda) or $ (jquery) making calls impure?</a></li>
+<li><a href="#what-is-the-meaning-of-f-a-in-signature">What is the meaning of <code>f a</code> in signature?</a></li>
+<li><a href="#is-there-any-real-world-examples-available">Is there any "real world" examples available?</a></li>
+<li><a href="#why-does-the-book-uses-es5-is-any-es6-version-available">Why does the book uses ES5? Is any ES6 version available?</a></li>
+<li><a href="#what-the-heck-is-that-reduce-function-about">What the heck is that reduce function about?</a></li>
+<li><a href="#wouldnt-you-use-a-simplified-english-rather-than-the-current-style">Wouldn't you use a simplified English rather than the current style?</a></li>
+<li><a href="#what-is-either-what-is-future-what-is-task">What is Either? What is Future? What is Task?</a></li>
+<li><a href="#where-do-map-filter-compose--methods-come-from">Where do map, filter, compose ... methods come from?</a></li>
+</ul>
+<h3>Why are snippets written sometimes with semicolons and sometimes without?</h3>
+<blockquote>
+<p>see <a href="https://github.com/MostlyAdequate/mostly-adequate-guide/issues/6">#6</a></p>
+</blockquote>
+<p>There are two schools in JavaScript, people who use them, and people who don't.  We've made the
+choice here to use them, and now, we strive to be consistent with that choice. If some are
+missing, please let us know and we will take care of the oversight.</p>
+<h3>Aren't external libraries like _ (ramda) or $ (jquery) making calls impure?</h3>
+<blockquote>
+<p>see <a href="https://github.com/MostlyAdequate/mostly-adequate-guide/issues/50">#50</a></p>
+</blockquote>
+<p>Those dependencies are available as if they were in the global context, part of the language.
+So, no, calls can still be considered as pure.
+For further reading, have a look at <a href="http://tomasp.net/blog/2014/why-coeffects-matter/">this article about
+CoEffects</a></p>
+<h3>What is the meaning of <code>f a</code> in signature?</h3>
+<blockquote>
+<p>see <a href="https://github.com/MostlyAdequate/mostly-adequate-guide/issues/62">#62</a></p>
+</blockquote>
+<p>In a signature, like:</p>
+<p><code>map :: Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b</code></p>
+<p><code>f</code> refers to a <code>functor</code> that could be, for instance, Maybe or IO. Thus, the signature abstracts
+the choice of that functor by using a type variable which basically means that any functor
+might be used where <code>f</code> stands as long as all <code>f</code> are of the same type (if the first <code>f a</code> in
+the signature represents a <code>Maybe a</code>, then the second one <strong>cannot refer to</strong> an <code>IO b</code> but
+should be a <code>Maybe b</code>. For instance:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-0">let maybeString = Maybe.of("Patate")
+let f = function (x) { return x.length }
+let maybeNumber = map(f, maybeString) // Maybe(6)
+
+// With the following 'refined' signature:
+// map :: (string -&gt; number) -&gt; Maybe string -&gt; Maybe number
+</textarea><button onclick="runSandbox('sandbox-0')">Run Code</button><div class="sandbox-output" id="output-sandbox-0">Output will appear here...</div></div>
+<h3>Is there any "real world" examples available?</h3>
+<blockquote>
+<p>see <a href="https://github.com/MostlyAdequate/mostly-adequate-guide/issues/77">#77</a>, <a href="https://github.com/MostlyAdequate/mostly-adequate-guide/issues/192">#192</a></p>
+</blockquote>
+<p>Should you haven't reached it yet, you may have a look at the <a href="https://github.com/MostlyAdequate/mostly-adequate-guide/blob/master/ch06.html">Chapter
+6</a> which presents a
+simple flickr application.
+Other examples are likely to come later on. By the way, feel free to share with us your
+experience!</p>
+<h3>Why does the book uses ES5? Is any ES6 version available?</h3>
+<blockquote>
+<p>see <a href="https://github.com/MostlyAdequate/mostly-adequate-guide/issues/83">#83</a>, <a href="https://github.com/MostlyAdequate/mostly-adequate-guide/pull/235">#235</a></p>
+</blockquote>
+<p>The book aims at being widely accessible. It started before ES6 went out, and now, as the new
+standard is being more and more accepted, we are considering making two separated editions with
+ES5 and ES6. Members of the community are already working on the ES6 version (have a look to
+<a href="https://github.com/MostlyAdequate/mostly-adequate-guide/pull/235">#235</a> for more information).</p>
+<h3>What the heck is that reduce function about?</h3>
+<blockquote>
+<p>see <a href="https://github.com/MostlyAdequate/mostly-adequate-guide/issues/109">#109</a></p>
+</blockquote>
+<p>Reduce, accumulate, fold, inject are all usual functions in functional programming used to
+combine the elements of a data structure successively. You might have a look at <a href="https://www.youtube.com/watch?v=JZSoPZUoR58&amp;ab_channel=NewCircleTraining">this
+talk</a> to get some
+more insights about the reduce function.</p>
+<h3>Wouldn't you use a simplified English rather than the current style?</h3>
+<blockquote>
+<p>see <a href="https://github.com/MostlyAdequate/mostly-adequate-guide/issues/176">#176</a></p>
+</blockquote>
+<p>The book is written in its own style which contributes to make it consistent as a whole. If
+you're not familiar with English, see it as good training. Nevertheless, should you need help
+to understand the meaning sometimes, there are now <a href="https://github.com/MostlyAdequate/mostly-adequate-guide/blob/master/TRANSLATIONS.html">several
+translations</a>
+available that could probably help you.</p>
+<h3>What is Either? What is Future? What is Task?</h3>
+<blockquote>
+<p>see <a href="https://github.com/MostlyAdequate/mostly-adequate-guide/issues/194">#194</a></p>
+</blockquote>
+<p>We introduce all of those structures throughout the book. Therefore, you won't find any use of a
+structure that hasn't previously be defined. Do not hesitate to read again some old parts if
+you ever feel uncomfortable with those types.
+A glossary/vade mecum will come at the end to synthesize all these notions.</p>
+<h3>Where do map, filter, compose ... methods come from?</h3>
+<blockquote>
+<p>see <a href="https://github.com/MostlyAdequate/mostly-adequate-guide/issues/198">#198</a></p>
+</blockquote>
+<p>Most of the time, those methods are defined in specific vendor libraries such as <code>ramda</code> or
+<code>underscore</code>. You should also have a look at <a href="./appendix_a.html">Appendix A</a>, 
+<a href="./appendix_b.html">Appendix B</a> and <a href="./appendix_c.html">Appendix C</a> in which we define
+several implementations used for the exercises. Those functions are really
+common in functional programming and even though their implementations may vary a bit, their
+meanings remain fairly consistent between libraries.</p>
+<script>
+function runSandbox(id) {
+    const code = document.getElementById('code-' + id).value;
+    const output = document.getElementById('output-' + id);
+    output.innerHTML = '';
+    
+    const originalLog = console.log;
+    console.log = function(...args) {
+        args.forEach(arg => {
+            output.innerHTML += '<div>' + arg + '</div>';
+        });
+        originalLog.apply(console, args);
+    };
+
+    try {
+        eval(code);
+    } catch (e) {
+        output.innerHTML += '<div style="color: red;">Error: ' + e.message + '</div>';
+    } finally {
+        console.log = originalLog;
+    }
+}
+</script>
+<style>
+.sandbox { border: 1px solid #ccc; padding: 10px; margin: 10px 0; border-radius: 5px; background-color: #f9f9f9; }
+.sandbox textarea { width: 100%; height: 100px; font-family: monospace; margin-bottom: 5px; padding: 5px; box-sizing: border-box; }
+.sandbox button { padding: 5px 10px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 3px; }
+.sandbox button:hover { background-color: #0056b3; }
+.sandbox-output { background: #fff; padding: 10px; margin-top: 5px; border: 1px solid #ddd; min-height: 40px; font-family: monospace; }
+</style>

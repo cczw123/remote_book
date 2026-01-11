@@ -1,0 +1,44 @@
+<h1>Available Translations</h1>
+<ul>
+<li><a href="https://github.com/llh911001/mostly-adequate-guide-chinese">中文版 (Chinese)</a>  by Linghao Li @llh911001</li>
+<li><a href="https://github.com/MostlyAdequate/mostly-adequate-guide-ru">Русский (Russian)</a>  by Maksim Filippov @maksimf</li>
+<li><a href="https://github.com/ivanzusko/mostly-adequate-guide-uk">Українська (Ukrainian)</a> by Ivan Zusko @ivanzusko</li>
+<li><a href="https://github.com/MostlyAdequate/mostly-adequate-guide-fr">Français (French)</a> by Benkort Matthias @KtorZ</li>
+<li><a href="https://github.com/MostlyAdequate/mostly-adequate-guide-pt-BR">Português (Portuguese)</a> by Palmer Oliveira @expalmer</li>
+<li><a href="https://github.com/MostlyAdequate/mostly-adequate-guide-es">Español (Spanish)</a> by Gustavo Marin @guumaster</li>
+<li><a href="https://github.com/MostlyAdequate/mostly-adequate-guide-it">Italiano (Italian)</a> by Elia Gentili @eliagentili</li>
+<li><a href="https://github.com/enshahar/mostly-adequate-guide-kr">한국어 (Korean)</a> by Frank Hyunsok Oh @enshahar</li>
+<li><a href="https://github.com/MostlyAdequate/mostly-adequate-guide-id">bahasa Indonesia (Indonesian)</a> by Ahmad Naufal Mukhtar @anaufalm</li>
+</ul>
+<h2>Creating new Translations</h2>
+<p>See <a href="CONTRIBUTING.md#Translations">Creating new translations</a></p>
+<script>
+function runSandbox(id) {
+    const code = document.getElementById('code-' + id).value;
+    const output = document.getElementById('output-' + id);
+    output.innerHTML = '';
+    
+    const originalLog = console.log;
+    console.log = function(...args) {
+        args.forEach(arg => {
+            output.innerHTML += '<div>' + arg + '</div>';
+        });
+        originalLog.apply(console, args);
+    };
+
+    try {
+        eval(code);
+    } catch (e) {
+        output.innerHTML += '<div style="color: red;">Error: ' + e.message + '</div>';
+    } finally {
+        console.log = originalLog;
+    }
+}
+</script>
+<style>
+.sandbox { border: 1px solid #ccc; padding: 10px; margin: 10px 0; border-radius: 5px; background-color: #f9f9f9; }
+.sandbox textarea { width: 100%; height: 100px; font-family: monospace; margin-bottom: 5px; padding: 5px; box-sizing: border-box; }
+.sandbox button { padding: 5px 10px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 3px; }
+.sandbox button:hover { background-color: #0056b3; }
+.sandbox-output { background: #fff; padding: 10px; margin-top: 5px; border: 1px solid #ddd; min-height: 40px; font-family: monospace; }
+</style>

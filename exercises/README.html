@@ -1,0 +1,68 @@
+<h1>Mostly Adequate Exercises</h1>
+<h2>Overview</h2>
+<p>All exercises from the book can be completed either:</p>
+<ul>
+<li>in browser (using the version of the book published on <a href="https://mostly-adequate.gitbooks.io/mostly-adequate-guide/">gitbook.io</a>)</li>
+<li>in your editor &amp; terminal, using <code>npm</code></li>
+</ul>
+<p>In every folder named <code>ch**</code> from this <code>exercises/</code> folder, you'll find three types of files:</p>
+<ul>
+<li>exercises</li>
+<li>solutions</li>
+<li>validations</li>
+</ul>
+<p>Exercises are structured with a statement in comment, followed by an incomplete
+or incorrect function. For example, <code>exercise_a</code> from <code>ch04</code> looks like this:</p>
+<div class="sandbox"><p style="margin-top: 0; font-weight: bold;">JavaScript Sandbox (Editable):</p><textarea id="code-sandbox-0">// Refactor to remove all arguments by partially applying the function.
+
+// words :: String -&gt; [String]
+const words = str =&gt; split(' ', str);
+</textarea><button onclick="runSandbox('sandbox-0')">Run Code</button><div class="sandbox-output" id="output-sandbox-0">Output will appear here...</div></div>
+<p>Following the statement, your goal is to refactor the given function <code>words</code>. Once done, 
+your proposal can be verified by running:</p>
+<pre><code>npm run ch04
+</code></pre>
+<p>Remember to first install node dependencies being at the recommended node version of the project. More on this on <a href="../README.md#about-the-nodejs-version">the main README of the project</a>.</p>
+<p>Alternatively, you can also have a peak at the corresponding solution file: in this case
+<code>solution_a.js</code>. </p>
+<blockquote>
+<p>The files <code>validation_*.js</code> aren't really part of the exercises but are used
+internally to verify your proposal and, offer hints when adequate. The curious 
+reader may have a look at them :).</p>
+</blockquote>
+<p>Now go and learn some functional programming λ!</p>
+<h2>About the Appendixes</h2>
+<p>Important notice: the exercise runner takes care of bringing all
+data-structures and functions from the appendixes into scope. Therefore, you
+may assume that any function present in the appendix is just available for you
+to use! Amazing, isn't it? </p>
+<script>
+function runSandbox(id) {
+    const code = document.getElementById('code-' + id).value;
+    const output = document.getElementById('output-' + id);
+    output.innerHTML = '';
+    
+    const originalLog = console.log;
+    console.log = function(...args) {
+        args.forEach(arg => {
+            output.innerHTML += '<div>' + arg + '</div>';
+        });
+        originalLog.apply(console, args);
+    };
+
+    try {
+        eval(code);
+    } catch (e) {
+        output.innerHTML += '<div style="color: red;">Error: ' + e.message + '</div>';
+    } finally {
+        console.log = originalLog;
+    }
+}
+</script>
+<style>
+.sandbox { border: 1px solid #ccc; padding: 10px; margin: 10px 0; border-radius: 5px; background-color: #f9f9f9; }
+.sandbox textarea { width: 100%; height: 100px; font-family: monospace; margin-bottom: 5px; padding: 5px; box-sizing: border-box; }
+.sandbox button { padding: 5px 10px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 3px; }
+.sandbox button:hover { background-color: #0056b3; }
+.sandbox-output { background: #fff; padding: 10px; margin-top: 5px; border: 1px solid #ddd; min-height: 40px; font-family: monospace; }
+</style>
